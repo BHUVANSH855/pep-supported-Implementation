@@ -1,81 +1,83 @@
-# PEP 725 — Specifying external dependencies in pyproject.toml
+# PEP 725 Notes
 
-**URL:** https://peps.python.org/pep-0725/
-**Status:** Draft (active discussion as of September 2026)
-**Authors:** Ralf Gommers, Pradyun Gedam, Jaime Rodriguez-Guerra
-**Relevance:** High — Paul Moore redirected this proposal to PEP 725
+## Purpose
 
-## What it does
+PEP 725 is important prior art because it addresses dependency information
+associated with building and hosting software.
 
-Defines a standard way to declare external (non-PyPI) dependencies
-in pyproject.toml using a DepURL format:
+It must be considered before proposing a new field for build-time Python
+implementation requirements.
 
-```toml
-[external]
-build-requires = ["dep:generic/cmake", "dep:virtual/compiler/c"]
-host-requires = ["dep:generic/openssl"]
-dependencies = ["dep:generic/libpq"]
+## What PEP 725 addresses
+
+PEP 725 provides a framework for describing external dependencies and
+distinguishes requirements relevant to different stages of the packaging
+process.
+
+This includes concepts related to:
+
+- build requirements;
+- host requirements;
+- runtime external dependencies.
+
+## Relevance to Python implementations
+
+The question for this research is whether a Python implementation itself
+could be modeled using the PEP 725 dependency framework.
+
+For example, conceptually:
+
+```text
+build requires CPython
 ```
 
-## Core Metadata mapping
+could be treated as a dependency on a virtual implementation.
 
-| Field | Core Metadata |
-|---|---|
-| `build-requires` | N/A |
-| `host-requires` | N/A |
-| `dependencies` | Requires-External-Dep |
+However, the current PEP 725 specification does not define CPython, PyPy,
+or other Python implementations as a standardized virtual dependency
+vocabulary for this purpose.
 
-**Critical finding:** build-requires and host-requires do NOT appear
-in Core Metadata. Only runtime dependencies become Requires-External-Dep.
+## Important distinction
 
-## Virtual dependency examples in current PEP 725
+There are two different statements:
 
-```
-dep:virtual/compiler/c
-dep:virtual/compiler/cpp
-dep:virtual/compiler/rust
-dep:virtual/interface/blas
-dep:virtual/interface/lapack
+```text
+The released package supports CPython.
 ```
 
-Python implementations are NOT currently defined as virtual dependencies.
+and:
 
-## Why PEP 725 does not currently solve the sdist problem
+```text
+The package must be built using CPython.
+```
 
-1. build-requires / host-requires have Core Metadata: N/A
-2. No interpreter virtual namespace is defined
-3. The Python interpreter is not modelled as an external dependency
-4. Even if it were, build-time requirements cannot currently trigger
-   pre-build candidate rejection via Core Metadata
+The first is a release/runtime compatibility statement.
 
-## What would need to change in PEP 725
+The second is a build-environment requirement.
 
-For PEP 725 to solve the sdist implementation compatibility problem:
+A future design should avoid assuming that these are the same metadata field.
 
-- A virtual interpreter namespace would need to be defined
-  (e.g. dep:virtual/interpreter/cpython)
-- Semantics for "the running interpreter satisfies this requirement"
-  would need to be specified
-- The requirement would need to be exposed in Core Metadata or the
-  Simple API in a form installers can act on before attempting a build
+## Relationship to this research
 
-## Paul Moore's suggestion (September 6, 2026)
+PEP 725 provides a possible alternative direction for the build-time case.
 
-Paul suggested taking the sdist build-failure case to PEP 725:
+Therefore the existence of PEP 725 means that a new
+`Requires-Implementation` field should not be proposed without first
+explaining why build-time implementation requirements cannot or should not be
+represented there.
 
-> "it sounds like something that would be better handled using PEP 725,
-> in particular the external.build-requires and/or external.host-requires
-> fields in pyproject.toml, combined with a DepURL which can identify
-> the Python implementation available in the build/host environment."
+At the same time, the current PEP 725 specification does not itself provide
+the release-level runtime implementation compatibility declaration being
+investigated here.
 
-## Ralf Gommers's response (September 6, 2026)
+## Current conclusion
 
-Ralf (PEP 725 co-author) said he does not understand the link to PEP 725
-for a CPython-only package, suggesting the two proposals address
-different problems.
+PEP 725 is:
 
-## Open question for PEP 725 thread
+- relevant to build-time implementation requirements;
+- not currently a direct solution for release-level implementation support;
+- a potential alternative or complementary mechanism;
+- an important unresolved design dependency.
 
-Could the Python interpreter itself be modelled as a virtual build
-dependency, and could that requirement be made visible to a frontend
-before the sdist build is attempted?
+The research should therefore avoid claiming that PEP 725 is irrelevant or
+that it cannot be extended.

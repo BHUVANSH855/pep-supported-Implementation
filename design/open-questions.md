@@ -1,84 +1,262 @@
-# Open design questions
+# Open Questions
 
-These are the questions that need to be resolved before a PEP draft
-can be written. Community input is welcome on all of them.
+This document deliberately records questions that the research has not
+resolved.
 
----
+## 1. What does "supported" mean?
 
-## 1. Absence semantics
+A field such as:
 
-If a release declares `Supported-Implementation: cpython` and `pypy`
-is not listed, what should a consumer infer?
+```toml
+supported-implementation = ["cpython"]
+```
 
-**Option A:** PyPy is unsupported — installer should reject.
+could mean several things:
 
-**Option B:** PyPy status is unknown — installer may warn but should
-allow the installation to proceed.
+- tested by CI;
+- officially supported by maintainers;
+- expected to work;
+- known to work;
+- supported for installation;
+- supported for runtime execution;
+- supported for building;
+- supported for all configurations of that implementation.
 
-**Option C:** CPython is confirmed; other implementations may work —
-no warning needed.
+These meanings are not equivalent.
 
-The current preference is **Option B**. Absence means the maintainer
-has not made a claim about that implementation, not that it is
-incompatible. This avoids stale metadata becoming a hard block as
-alternate implementations improve over time.
+A standard must define the intended semantics precisely.
 
----
+## 2. Is the field normative or informational?
 
-## 2. Field name
+Possible models:
 
-The field has been referred to as both `Requires-Implementation` and
-`Supported-Implementation`. The name should follow from the semantics
-decision above.
+### Informational
 
-Candidates:
-- `Supported-Implementation` — positive framing, clearest intent
-- `Known-Implementations` — neutral
-- `Tested-Implementation` — most precise about what "supported" means
+The field describes maintainer intent but does not affect installation.
 
----
+### Advisory
 
-## 3. Installer behaviour
+Tools may warn when the current implementation is not listed.
 
-Should an unsatisfied declaration (running implementation not listed)
-cause the installer to reject the candidate or produce a warning?
+### Candidate-selection metadata
 
-`Requires-Python` uses MUST-reject semantics. Given that implementation
-compatibility is more fluid than Python version compatibility, the
-initial proposal uses SHOULD-warn — allowing alternate implementations
-to still attempt installation while surfacing the information.
+Resolvers/installers may use the field to eliminate candidates.
 
----
+### Mandatory compatibility constraint
 
-## 4. Wheel interaction
+Installers must reject a candidate when the current implementation is not
+listed.
 
-What should happen if a release declares `Supported-Implementation: cpython`
-but publishes a `py3-none-any` wheel?
+The research currently does not select one of these.
 
-The current view is that these operate at different semantic layers:
-the field describes the project/release, wheel tags describe a specific
-artifact. A `py3-none-any` wheel says the artifact has no
-implementation-specific compiled code; the field says the project has
-only been tested on CPython. These are not necessarily contradictory.
+## 3. What does absence mean?
 
----
+Possible choices:
 
-## 5. Build vs runtime scope
+A. absence means all implementations are supported;
+B. absence means unknown;
+C. absence means no compatibility declaration.
 
-Should the field describe only runtime compatibility, or also build-time
-requirements?
+The research currently prefers C.
 
-The current proposal is runtime-only. Build-time requirements (where
-a source build itself fails on a given implementation) may be addressed
-separately, potentially through an extension to PEP 725.
+This is important for backwards compatibility.
 
----
+Existing distributions must not suddenly become incompatible simply because
+they predate the field.
 
-## 6. Supported-Platform relationship
+## 4. What does an empty list mean?
 
-`Supported-Platform` has existed in Core Metadata since 1.1 (PEP 314)
-but its semantics have never been specified. Its documented scope is
-OS and CPU for binary distributions.
+Possible meanings:
 
-Should this proposal also clarify or deprecate `Supported-Platform`,
-or leave it unchanged?
+```toml
+supported-implementation = []
+```
+
+could mean:
+
+- no implementations supported;
+- no information;
+- invalid metadata.
+
+The safest design may be to prohibit an empty list.
+
+## 5. Is implementation identity sufficient?
+
+No.
+
+A project can support:
+
+```text
+CPython
+```
+
+but reject:
+
+```text
+CPython free-threaded
+```
+
+or:
+
+```text
+CPython debug
+```
+
+PEP 780 is relevant here.
+
+The proposed field should therefore not become a general-purpose interpreter
+compatibility language.
+
+## 6. How should ABI metadata interact with implementation metadata?
+
+A future candidate-selection algorithm could conceptually evaluate:
+
+```text
+implementation identity
++
+Python version
++
+ABI features
++
+platform
++
+wheel tags
+```
+
+The standards need to define which mechanism owns each dimension.
+
+## 7. Runtime vs build-time compatibility
+
+Consider two statements:
+
+```text
+The package can only run on CPython.
+```
+
+and:
+
+```text
+The package's build process must execute under CPython.
+```
+
+They may require different metadata semantics.
+
+PEP 725 should be considered before creating a second build-environment
+dependency vocabulary.
+
+## 8. Could PEP 725 solve the problem?
+
+PEP 725 is relevant to external dependencies and build/host requirements.
+
+The current PEP does not define Python implementations themselves as the
+virtual dependency vocabulary needed for this use case.
+
+Possible future work could investigate whether Python implementations should
+be modeled there.
+
+That possibility should be evaluated before claiming a new metadata field is
+necessary.
+
+## 9. Could Trove classifiers solve the problem?
+
+Classifiers already allow projects to say:
+
+```text
+Programming Language :: Python :: Implementation :: CPython
+```
+
+However, classifiers are descriptive classification data.
+
+The unresolved question is whether the packaging ecosystem needs the same
+information with normative semantics and defined installer behavior.
+
+## 10. Could wheel tags solve the problem?
+
+For an already-built wheel, wheel tags are the established mechanism.
+
+The difficult case is:
+
+```text
+sdist only
+```
+
+where the compatible wheel does not yet exist and the installer may need to
+build the source.
+
+The research therefore treats wheel tags and release-level metadata as
+different layers rather than competing replacements.
+
+## 11. Does Core Metadata need to be extended?
+
+Core Metadata is a plausible place for release-level compatibility data.
+
+But adding a field has costs:
+
+- specification complexity;
+- build-backend support;
+- metadata validation;
+- installer behavior;
+- repository behavior;
+- documentation;
+- backwards compatibility;
+- maintenance of the vocabulary.
+
+The benefit must justify those costs.
+
+## 12. How would metadata be obtained?
+
+PEP 658 and PEP 714 allow repositories to expose Core Metadata separately.
+
+However, metadata sidecars are optional.
+
+Therefore a design cannot assume that every package index will provide the
+field before an artifact is downloaded.
+
+## 13. Should metadata be release-level or artifact-level?
+
+This research currently prefers release-level semantics.
+
+A release can contain:
+
+- an sdist;
+- multiple wheels;
+- wheels for different platforms;
+- wheels for different ABIs.
+
+Wheel tags already describe the individual wheel artifacts.
+
+The proposed field would instead describe the compatibility claim of the
+release.
+
+## 14. What happens when a project publishes an incorrect declaration?
+
+Possible approaches include:
+
+- informational semantics;
+- warning only;
+- installer rejection;
+- validation tooling;
+- automated CI verification.
+
+The answer affects whether the field is trustworthy enough for automated
+candidate selection.
+
+## 15. Can the implementation vocabulary remain open?
+
+PEP 421 deliberately uses an implementation identity rather than a closed
+registry.
+
+A standard should avoid creating a second incompatible registry if possible.
+
+## 16. Does the problem justify a new standard?
+
+This remains the central research question.
+
+The strongest case currently is:
+
+> Some releases have implementation-specific compatibility requirements,
+> and an sdist does not expose those requirements through a dedicated
+> normative compatibility field before its build is attempted.
+
+The research still needs to establish whether that problem is common and
+important enough to justify a new standard mechanism.

@@ -1,82 +1,160 @@
-# Real-world cases
+# Real-World Cases
 
-Packages and tools that illustrate the gap this proposal addresses.
+This document records concrete examples relevant to implementation-level
+compatibility.
 
----
+## 1. Guppy3
 
-## guppy3
+Guppy3 is the strongest current example.
 
-**PyPI:** https://pypi.org/project/guppy3/
-**Current release:** 3.1.7
-
-guppy3 is a memory profiling tool that uses CPython-specific C internals.
-Its PyPI page states explicitly:
-
-> "This package is CPython only; PyPy and other Python implementations
-> are not supported."
-
-It publishes CPython-specific wheels (`cp314-cp314-*.whl`) and a source
-distribution (`guppy3-3.1.7.tar.gz`). No PyPy wheels are published.
-
-Its `setup.py` contains:
+Its build configuration explicitly checks:
 
 ```python
-if sys.implementation.name != 'cpython':
-    print(
-        'setup.py: Warning: This guppy package only supports CPython.',
-        'Compilation failure expected, but continuing anyways...'
-    )
+sys.implementation.name != "cpython"
 ```
 
-A user on PyPy or GraalPy would receive the sdist (no compatible wheel
-exists) and encounter a build failure. There is currently no pre-build
-metadata signal in the sdist that would allow an installer to reject
-this candidate before attempting the build.
+This is direct evidence that the build process itself contains an
+implementation-specific compatibility condition.
 
----
+The project's published information also states that:
 
-## Non-installer tooling
+- CPython is supported;
+- PyPy is unsupported;
+- other Python implementations are unsupported;
+- free-threaded CPython is unsupported.
 
-Some tooling works across multiple Python implementations at scale and
-needs machine-readable implementation support information:
+### Why this matters
 
-- Tools that fuzz extensions across CPython, PyPy, and RustPython
-  currently must attempt a build to discover whether a given extension
-  supports a given implementation.
+The package demonstrates two different compatibility dimensions:
 
-- Systems that download large numbers of packages and run their test
-  suites under different implementations would benefit from pre-filtering
-  by declared support rather than discovering compatibility by building.
+```text
+Python implementation identity
+        +
+ABI/configuration characteristics
+```
 
-For these consumers, Trove classifiers are insufficient because they
-are not structured for programmatic querying of implementation support
-across thousands of packages in a consistent way.
+It therefore supports investigating an implementation-level metadata field,
+but also demonstrates why implementation identity cannot represent all
+compatibility information.
 
----
+### What it does not prove
 
-## Packages where existing mechanisms are sufficient
+Guppy3 does not prove that:
 
-Implementation-specific build behaviour does not automatically mean
-new metadata is needed. Many packages handle it well already:
+- every CPython-only project needs metadata;
+- installers must reject PyPy;
+- a new Core Metadata field is required;
+- PEP 725 cannot solve the build-time part of the problem.
 
-- **aiohttp** — falls back gracefully to a pure-Python implementation
-  on PyPy; builds successfully on multiple implementations.
-- **multidict** — implementation-specific build with a working fallback.
-- **coverage.py** — PyPy triggers a different build path, not a failure.
-- **python-zstandard** — implementation-dependent backend selection.
+It is evidence of a concrete compatibility boundary.
 
-The gap is specifically for packages like guppy3 where the incompatibility
-is fundamental and statically knowable, not for packages that adapt their
-build to the environment.
+## 2. Tooling at scale
 
----
+Discussion around this proposal identified non-installer use cases such as:
 
-## packaging.tags issue #311
+- testing large package sets against multiple implementations;
+- fuzzing packages against different interpreters;
+- pre-filtering packages before expensive builds;
+- compatibility testing across CPython, PyPy, and other implementations.
 
-https://github.com/pypa/packaging/issues/311
+These use cases are relevant because the consumer of compatibility metadata does
+not necessarily have to be an installer.
 
-`packaging.tags` does not generate `cp3-none-any` tags for pure-Python
-CPython-specific packages. Only `pp3-none-any` was added as a special
-case. This means the "just use an implementation-specific wheel tag"
-answer is not fully supported by current tooling for pure-Python packages
-that are CPython-only.
+A research question is therefore:
+
+> Is implementation compatibility information useful enough to justify a
+> standard machine-readable declaration even if installers only use it
+> conservatively?
+
+## 3. Packages that adapt to implementations
+
+Not every implementation difference is a hard compatibility boundary.
+
+Projects such as:
+
+- `aiohttp`;
+- `multidict`;
+- `coverage.py`;
+- `python-zstandard`;
+
+provide examples of software that can adapt to different environments,
+provide fallbacks, or conditionally use implementation-specific features.
+
+This is important counter-evidence.
+
+The existence of CPython-specific projects does not mean that implementation
+metadata should be mandatory for ordinary packages.
+
+## 4. Trove classifiers
+
+Projects can already use classifiers such as:
+
+```text
+Programming Language :: Python :: Implementation :: CPython
+```
+
+and:
+
+```text
+Programming Language :: Python :: Implementation :: PyPy
+```
+
+This demonstrates that the ecosystem already has a vocabulary for describing
+implementation targeting.
+
+The limitation is semantic rather than syntactic:
+
+classifiers are descriptive classification metadata, not a defined
+candidate-selection compatibility constraint.
+
+## 5. Sdist build avoidance
+
+Packaging discussions have identified cases where an installer may select an
+sdist and attempt a build that is likely to fail or is not intended for
+ordinary installation.
+
+This is broader than Python implementation compatibility.
+
+The research uses these discussions as evidence that:
+
+> pre-build knowledge about whether an sdist is an appropriate installation
+> candidate can have practical value.
+
+They do not establish that implementation metadata is the correct solution.
+
+## 6. Pure-Python detection discussion
+
+A separate packaging discussion asked how tooling could determine whether an
+sdist is pure Python without attempting a complete build.
+
+This is another example of the broader problem:
+
+```text
+source distribution
+        ↓
+unknown build characteristics
+        ↓
+tool must perform work to discover them
+```
+
+The existence of this problem reinforces the need to distinguish:
+
+- implementation compatibility;
+- build characteristics;
+- artifact compatibility.
+
+A single metadata field should not be overloaded to cover all three.
+
+## 7. Research interpretation
+
+The real-world evidence currently supports:
+
+- implementation-specific compatibility is real;
+- implementation-specific build logic is real;
+- pre-build metadata can be useful;
+- implementation information already exists descriptively;
+- wheel artifacts already have strong implementation compatibility metadata;
+- the unresolved problem is primarily the release/sdist layer.
+
+It does not yet support a claim that one particular metadata design is
+necessary.

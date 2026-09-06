@@ -1,75 +1,172 @@
-# Discussion log
+# Discussion Record
 
-Summary of the pre-PEP Discourse thread and related discussions.
+This file records the main arguments and observations from the
+`Requires-Implementation` discussion.
 
-Thread: https://discuss.python.org/t/pre-pep-requires-implementation-declaring-python-implementation-compatibility-in-core-metadata/108898
+## Paul Moore: identify the concrete use cases
 
----
+Paul Moore asked for more concrete examples before treating a new metadata
+field as necessary.
 
-## Key points raised and responses
+A particularly relevant observation was whether there is currently a
+standard way for an installer to determine, from sdist metadata before
+building, that a package is CPython-only.
 
-**Paul Moore (CPython core developer, packaging PEP delegate)** asked
-whether there are use cases beyond the sdist build-failure case, and
-suggested exploring PEP 725 first.
+The research recorded here treats that as an important question rather than
+assuming the answer in advance.
 
-After reviewing PEP 725, the build-failure case (where an sdist cannot
-be built on a given implementation) may fit PEP 725's `build-requires`
-model. However, PEP 725's `build-requires` and `host-requires` fields
-have `Core Metadata: N/A`, so they do not produce a signal that an
-installer can act on before attempting a build.
+## PEP 725
 
-Paul also confirmed directly:
+PEP 725 was suggested as an area to investigate before introducing a new
+metadata mechanism.
 
-> "Currently, no I don't think there is [a standard way for an installer
-> to know a package is CPython-only from sdist metadata before building]."
+PEP 725 is concerned with external dependencies and distinguishes requirements
+needed at different stages of the packaging process.
 
-**Eli Schwartz** correctly pointed out that the RestrictedPython example
-used initially was not a good one — if a package is CPython-only, it
-should publish a CPython-specific wheel rather than `py3-none-any`. That
-is a packaging bug in the specific project, not a gap in the standard.
-The `packaging.tags` library also has a known issue (#311) where
-`cp3-none-any` tags are not generated, though `pp3-none-any` was added.
+The current PEP does not define Python implementations such as CPython or
+PyPy as a standard virtual dependency vocabulary.
 
-**Ralf Gommers (PEP 725 co-author, NumPy/SciPy)** raised two points:
+That means PEP 725 is relevant prior art, but the current specification does
+not directly provide a release-level Python implementation compatibility
+field.
 
-1. The staleness concern: if a package declares it does not support PyPy,
-   and PyPy later gains compatibility, the metadata becomes harmful.
-   This is a legitimate concern and the reason the proposal has shifted
-   toward a positive "known to support" framing rather than an exclusionary
-   "does not support" constraint.
+This leaves an important design question:
 
-2. PEP 725 is in final stages awaiting the Packaging Steering Council
-   (post #98). The runtime implementation compatibility case was not
-   addressed by PEP 725 and appears outside its current scope.
+> Should build-time implementation requirements be handled as part of the
+> PEP 725 dependency model, rather than by a new implementation compatibility
+> metadata field?
 
-**Daniel Diniz** noted that a positive assertion ("these implementations
-are known to work") is more stable and honest than a negative one, and
-described two tooling use cases: fuzzing extensions across multiple
-implementations, and large-scale compatibility testing across thousands
-of packages. Both currently require attempting a build to discover
-implementation support; machine-readable metadata would allow pre-filtering.
+The research does not currently resolve that question.
 
-He also raised the important design question: if a release declares
-`cpython` as supported and `pypy` is absent, does that mean PyPy is
-unsupported, or only that PyPy support is unknown? The proposed answer
-is the latter — absence means no claim, not incompatibility.
+## Ralf Gommers: staleness and positive declarations
 
----
+A concern raised during the discussion is that an explicit negative
+compatibility declaration can become stale.
 
-## Open design questions
+For example:
 
-See `design/open-questions.md` for the full list. The central unresolved
-question is the absence semantics: what should a tool infer when a
-particular implementation is not listed?
+```text
+Requires-Implementation: cpython
+```
 
----
+would imply that other implementations are not acceptable.
 
-## Related thread
+If PyPy later becomes compatible, an old release could still contain a
+negative statement that is no longer technically true.
 
-A comment was posted in the PEP 725 discussion (post #96) asking whether
-the runtime implementation compatibility case is in scope for PEP 725:
+This motivated investigation of a positive declaration:
 
-https://discuss.python.org/t/pep-725-specifying-external-dependencies-in-pyproject-toml-round-2/103890/96
+```text
+Supported-Implementation: cpython
+```
 
-No direct response has been received. Based on post #98 from Ralf
-Gommers, PEP 725 is in final stages and not being extended for this use case.
+Such a declaration can be interpreted as the set of implementations the
+project explicitly supports for that release, rather than as an exhaustive
+list of implementations that are technically capable of running it.
+
+That distinction is important and remains an open semantic question.
+
+## Daniel Diniz: non-installer tooling
+
+Daniel Diniz identified use cases beyond ordinary installation.
+
+Large-scale compatibility tooling may need to classify thousands of projects
+against multiple Python implementations.
+
+Examples include:
+
+- compatibility testing across CPython, PyPy, and other implementations;
+- fuzzing projects against multiple interpreters;
+- selecting packages that are worth attempting on a particular interpreter;
+- avoiding expensive builds where compatibility can already be determined
+  from metadata.
+
+This suggests that implementation compatibility metadata could have value
+even when the final decision is not made by an installer.
+
+## RestrictedPython
+
+RestrictedPython was discussed as a possible CPython-only example.
+
+The research does not currently treat it as a primary proof case.
+
+The stronger evidence comes from projects whose build or runtime behavior
+explicitly checks the Python implementation.
+
+## Guppy3
+
+`guppy3` is currently the strongest concrete example in this repository.
+
+Its build configuration explicitly checks:
+
+```python
+sys.implementation.name != "cpython"
+```
+
+and its published project information states that PyPy and other
+implementations are unsupported.
+
+This is a useful example because the implementation restriction exists at the
+project/release level while an sdist remains a source artifact that must
+normally be built into a wheel.
+
+It does not prove that a new metadata field is required. It demonstrates the
+kind of information the proposed field would attempt to represent.
+
+## ABI compatibility
+
+The Guppy3 case also exposes a second dimension.
+
+Its published compatibility information distinguishes ordinary CPython
+compatibility from free-threaded CPython compatibility.
+
+That means:
+
+```text
+implementation = cpython
+```
+
+does not necessarily mean:
+
+```text
+all CPython ABI configurations = supported
+```
+
+PEP 780 is therefore relevant prior art for ABI-level compatibility.
+
+A proposed implementation field should not attempt to replace ABI feature
+metadata.
+
+## Sdist build avoidance
+
+There are existing packaging discussions about avoiding unwanted attempts to
+build sdists.
+
+Those discussions are relevant because they establish a broader ecosystem
+problem:
+
+> deciding whether an sdist should be built can itself be useful information
+> before performing an expensive or potentially failing build.
+
+However, these discussions do not establish that implementation metadata is
+the required solution.
+
+They should therefore be treated as problem-space evidence rather than proof
+of a particular design.
+
+## Current interpretation
+
+The discussion supports the following research position:
+
+1. There are real implementation-specific compatibility cases.
+2. Existing wheel tags solve the problem for already-built wheels.
+3. PEP 508 solves conditional dependency selection.
+4. Trove classifiers provide descriptive implementation information.
+5. Static sdist metadata makes additional release metadata technically
+   plausible.
+6. There remains no dedicated normative Core Metadata field for release-level
+   Python implementation compatibility.
+7. It is still unresolved whether that gap should be solved by a new field,
+   an extension to another packaging mechanism, or improved tooling.
+
+That is the current boundary of the evidence.

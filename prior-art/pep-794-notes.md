@@ -1,65 +1,63 @@
-# PEP 794 — Import Name Metadata
+# PEP 794 Notes
 
-**URL:** https://peps.python.org/pep-0794/
-**Status:** Accepted (September 2025)
-**Author:** Brett Cannon
-**Relevance:** High — structural precedent for adding project-level
-Core Metadata fields
+## Purpose
 
-## What it does
+PEP 794 is useful prior art for project/release-level metadata describing
+properties of Python packages.
 
-Adds two new Core Metadata fields:
+It proposes `Import-Name` and `Import-Namespace` metadata.
 
-- `Import-Name` — the top-level import name of the package
-- `Import-Namespace` — the namespace package the distribution belongs to
+## Relevant idea
 
-Both are project-level fields that can be served by an index
-independently of individual artifacts.
+The important structural precedent is that metadata describing a project's
+relationship to Python imports can be represented as standardized Core
+Metadata.
 
-## Why it matters for this proposal
+This demonstrates that project-level facts can be standardized independently
+of individual wheel filenames.
 
-PEP 794 explicitly rejected inferring project information from wheel
-contents because:
+## Relationship to this research
 
-1. It does not work for sdists
-2. It requires inference rather than explicit project metadata
-3. Project-level information belongs in Core Metadata, not wheel inspection
+A proposed implementation compatibility field would follow a similar
+high-level model:
 
-This is structurally identical to the argument for Requires-Implementation:
-
-> Implementation compatibility is a project-level property that cannot
-> be reliably inferred from wheel contents and is entirely absent from
-> sdist artifacts.
-
-## The Simple API connection
-
-PEP 794's fields are served via the existing `data-core-metadata`
-attribute on the Simple API (introduced by PEP 658 / PEP 714).
-
-This means: any new Core Metadata field automatically participates
-in the Simple API metadata transport. No new infrastructure needed.
-
-## Key quote from PEP 794 motivation
-
-The PEP argues that project-level Core Metadata allows tools to
-"obtain the information without downloading every distribution artifact."
-
-That is precisely the value proposition of Requires-Implementation
-for sdists.
-
-## Architectural pattern established by PEP 794
-
-```
-pyproject.toml
-      |
-      v
-Core Metadata field
-      |
-      v
-Simple API (data-core-metadata)
-      |
-      v
-installer acts before downloading artifact
+```text
+project/release metadata
+        ↓
+Core Metadata
+        ↓
+available across distribution artifacts
 ```
 
-Requires-Implementation would follow this exact same pattern.
+The proposed field would differ in what it describes:
+
+```text
+PEP 794:
+    import names / namespaces
+
+Research proposal:
+    Python implementation support
+```
+
+## Metadata transport
+
+PEP 794 should not be treated as evidence that metadata is automatically
+available without downloading artifacts.
+
+For pre-download metadata access, the more directly relevant mechanisms are:
+
+- PEP 658;
+- PEP 714;
+- the Simple Repository API.
+
+These specifications define how repositories can expose Core Metadata
+separately from distributions.
+
+## Current conclusion
+
+PEP 794 provides useful structural prior art for standardized project-level
+Core Metadata.
+
+It does not establish that implementation compatibility belongs in Core
+Metadata, nor does it solve the pre-build implementation compatibility
+problem by itself.

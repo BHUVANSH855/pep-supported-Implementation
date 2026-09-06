@@ -1,52 +1,72 @@
 # Pre-PEP Thread: Requires-Implementation
 
 **URL:** https://discuss.python.org/t/pre-pep-requires-implementation-declaring-python-implementation-compatibility-in-core-metadata/108898
-**Posted:** September 6, 2026
+**Posted:** September 5, 2026
 **Category:** Packaging
-**Author:** BHUVANSH855
+**Stats:** 175 views, 6 likes, 2 links (as of September 6, 2026)
+
+---
 
 ## Thread timeline
 
-| Post | Author | Role | Summary |
+| Post | Author | Role | Key content |
 |---|---|---|---|
-| 1 | BHUVANSH855 | Author | Original pre-PEP post |
-| 2 | pf_moore | CPython core dev, PEP delegate | Redirect to PEP 725; questioned use cases |
-| 3 | BHUVANSH855 | Author | Agreed sdist build case fits PEP 725; raised runtime case |
-| 4 | eschwartz | Eli Schwartz | Challenged RestrictedPython example; pointed to PEP 425 and packaging.tags #311 |
-| 5 | BHUVANSH855 | Author | Conceded wheel example; focused on sdist case |
-| 6 | pf_moore | CPython core dev, PEP delegate | Confirmed no standard mechanism exists for sdist case |
-| 7 | BHUVANSH855 | Author | Committed to checking PEP 725 thread |
-| 8 | rgommers | NumPy/SciPy core dev, PEP 725 co-author | Challenged real-world need; raised AI concern; stale metadata objection |
+| 1 | BHUVANSH855 | Proposer | Original pre-PEP post |
+| 2 | pf_moore | CPython core dev, PEP delegate | Redirect to PEP 725; questioned use cases beyond sdist build failure |
+| 3 | BHUVANSH855 | Proposer | Agreed build case fits PEP 725; raised runtime case with RestrictedPython |
+| 4 | eschwartz | Eli Schwartz | Challenged RestrictedPython (PEP 425 covers it); found packaging.tags #311 |
+| 5 | BHUVANSH855 | Proposer | Conceded RestrictedPython wheel example; focused on sdist case |
+| 6 | pf_moore | CPython core dev | **Confirmed: no standard mechanism for sdist implementation metadata** |
+| 7 | BHUVANSH855 | Proposer | Committed to checking PEP 725 thread; gracious reply |
+| 8 | pf_moore | CPython core dev | **Content not yet captured — share screenshot** |
+| 9 | devdanzin | Daniel Diniz | Semantic reframing: positive assertion; two concrete non-installer use cases; disclosed working relationship |
 
-## Key confirmed fact (Post 6)
+---
 
-Paul Moore, packaging PEP delegate, confirmed:
+## Key confirmed facts
 
-> "Currently, no I don't think there is [a standard way for an
-> installer to know a package is CPython-only from sdist metadata
-> before building]."
+### Fact 1 — Gap is confirmed (Post 6)
 
-This is the strongest single fact in the discussion. Paul is the
-packaging PEP delegate. His confirmation of the gap is on record.
+Paul Moore:
+> "Currently, no I don't think there is [a standard way for an installer
+> to know a package is CPython-only from sdist metadata before building]."
 
-## Key strategic fact (Post 6, second paragraph)
+### Fact 2 — Bridge to standalone PEP (Post 6)
 
-Paul also said:
-
+Paul Moore:
 > "it's only worth raising as its own individual proposal if the
-> conclusion is that PEP 725 considers it out of scope (I feel like
-> I'd be disappointed if that happened, though)."
+> conclusion is that PEP 725 considers it out of scope"
 
-If PEP 725 authors say it is out of scope, Paul's own words provide
-the bridge back to a standalone PEP.
+PEP 725 post #98 shows scope is frozen. This condition is now met.
 
-## Lessons from mistakes
+### Fact 3 — Semantic shift triggered (Post 9)
 
-1. Do not use RestrictedPython as the primary example — its wheel
-   tagging is the real bug, not a metadata gap (Eli's correct objection)
-2. The wheel case is fully handled by PEP 425 — do not re-open this
-3. The sdist runtime/build case is the strongest remaining argument
-4. Ralf's "stale metadata" objection is not yet answered
-5. More concrete real-world examples are needed before proceeding
-6. The AI-driven concern must be addressed directly — PyRift is the
-   personal motivation, not the tool
+Daniel Diniz proposed positive "known to be supported" framing
+over exclusionary constraint. This is the right design direction.
+
+---
+
+## Mistakes made and conceded
+
+| Mistake | Who caught it | Concession |
+|---|---|---|
+| Used RestrictedPython as wheel example | Eli Schwartz (post 4) | Conceded. PEP 425 handles wheels. RestrictedPython has a packaging bug, not a metadata gap. |
+| Used RestrictedPython in PEP 725 thread | Ralf Gommers (dependency marker counterargument) | Conceded. Downstream dependency case solved by PEP 508. Package's own declaration is still missing. |
+
+---
+
+## Credibility risks
+
+| Risk | Source | Status |
+|---|---|---|
+| AI-driven concern | Ralf Gommers (post 8) | Addressed once. Do not repeat defense. |
+| N=1 use case | Daniel Diniz (post 9) | Unresolved. Need more real-world cases or alternate implementation team endorsement. |
+| Working relationship disclosure | Daniel Diniz (post 9) | Accepted. Daniel is the only public supporter so far. |
+
+---
+
+## Current strategic position
+
+**Open:** PEP 725 scope is frozen (post #98). Standalone proposal route confirmed open.
+
+**Needed before next post:** Paul's Reply 8 content. Share screenshot.

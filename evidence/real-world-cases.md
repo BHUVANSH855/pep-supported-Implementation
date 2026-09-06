@@ -1,37 +1,27 @@
 # Real-World Package Cases
 
-Cases where Python implementation compatibility is a genuine concern
-at the project level, not just the artifact level.
+Last updated: September 6, 2026
 
 ---
 
-## guppy3 — STRONG CASE (build-time)
+## TIER 1 — Strong evidence (use in discussions)
+
+### guppy3
 
 **PyPI:** https://pypi.org/project/guppy3/
-**Current version:** 3.1.7 (released May 11, 2026)
-**Classifier declared:** Programming Language :: Python :: Implementation :: CPython
+**Version:** 3.1.7 (May 11, 2026)
+**Classifier:** `Programming Language :: Python :: Implementation :: CPython`
 
-### What it does
-
-Memory profiling tool for Python. Uses CPython-specific C internals.
-
-### Implementation stance
-
-PyPI page explicitly states:
+**PyPI declaration:**
 > "This package is CPython only; PyPy and other Python implementations
 > are not supported."
 
-Also declares free-threaded CPython is not supported.
-
-### Artifacts published
-
-- `guppy3-3.1.7.tar.gz` (sdist)
+**Artifacts:**
+- `guppy3-3.1.7.tar.gz` (sdist — no implementation tag)
 - `guppy3-3.1.7-cp314-cp314-*.whl` (CPython-specific wheels)
 - No PyPy wheels
 
-### Build script evidence
-
-`setup.py` contains:
+**Build script evidence (setup.py):**
 
 ```python
 if sys.implementation.name != 'cpython':
@@ -41,83 +31,96 @@ if sys.implementation.name != 'cpython':
     )
 ```
 
-Then proceeds to compile two C extensions:
-- guppy.sets.setsc
-- guppy.heapy.heapyc
+Then compiles C extensions: `guppy.sets.setsc` and `guppy.heapy.heapyc`.
 
-### Why this is the strongest case
+**Why this is strong:**
+Build system detects non-CPython and explicitly expects failure. An sdist
+is published with no pre-build metadata signal. No PyPy wheel exists, so
+a PyPy user receives the sdist and encounters a build failure with no
+normative warning from the installer.
 
-1. The project explicitly declares CPython-only on PyPI
-2. The build system itself detects non-CPython and expects failure
-3. An sdist is published with no pre-build metadata signal
-4. CPython-specific wheels exist so PyPy wheels will not match
-5. A PyPy user receives the sdist and encounters a build failure
-   with no normative metadata to have warned the installer in advance
-
-### What we have NOT verified
-
-We have not independently run `pypy -m pip install guppy3` and
-captured the exact error output. Do not claim we reproduced the failure.
-Cite the source code and PyPI declaration only.
+**NOT verified:** We have not run `pypy -m pip install guppy3`.
+Cite source code and PyPI declaration only.
 
 ---
 
-## objgraph — MEDIUM CASE (runtime)
+### Daniel Diniz's tooling (non-installer use cases)
 
-**PyPI:** https://pypi.org/project/objgraph/
+**Source:** devdanzin, post 9, September 6, 2026
 
-### What it does
+**Use case 1: Interpreter fuzzer**
+Fuzzes extensions across CPython, PyPy, and RustPython. Currently must
+attempt a build to discover implementation support. Machine-readable
+declared support would eliminate this trial-and-error.
 
-Draws Python object reference graphs. Uses gc module internals.
+**Use case 2: Large-scale compatibility tester**
+Downloads thousands of extensions, builds and runs test suites under
+different implementations. Metadata would allow pre-filtering rather
+than discovering support by building.
 
-### Implementation concern
-
-Pure Python but relies on gc module behavior that differs across
-implementations. Documented as CPython-focused.
-
-### Artifacts
-
-Publishes py3-none-any wheel. Builds fine everywhere.
-Failure is at runtime, not build time.
-
-### Strength as evidence
-
-Medium. The gc module exists in PyPy but behavior differs.
-Not as clean as guppy3 because failure mode is not guaranteed
-and may be fixable on the PyPy side.
+**Important caveat:** Daniel disclosed he works with the proposer.
+These are real use cases but cannot be treated as independent validation.
+Present them as a category of non-installer consumer need, not as
+independent community endorsement.
 
 ---
 
-## RestrictedPython — RETIRED EXAMPLE
+## TIER 2 — Ambiguous (context only, do not lead with these)
 
-**Do not use this example.**
+### objgraph
 
-Eli Schwartz correctly identified that RestrictedPython publishes a
-py3-none-any wheel when it should publish a cpython-specific wheel.
-The fix is a bug report to the project, not new metadata.
-
-This example was conceded in the thread on September 6, 2026.
+Pure Python, gc module internals. Documented as CPython-focused.
+Failure is at runtime. Not guaranteed to fail on PyPy in all scenarios.
+Use only to illustrate that runtime-only failures exist as a category.
 
 ---
 
-## Packages that DISPROVE the need for new metadata
+## TIER 3 — RETIRED
 
-These packages have implementation-specific builds but handle it
-correctly through existing mechanisms. Include these in any
-discussion to show the analysis is balanced.
+### RestrictedPython
 
-### aiohttp
-Has implementation-specific build paths. Falls back gracefully on PyPy.
-Existing mechanisms work. No new metadata needed.
+**Do not use.** Eli Schwartz correctly identified the wheel is
+incorrectly tagged. Ralf confirmed the downstream dependency case
+is solved by PEP 508 markers. This example was conceded September 6.
 
-### multidict
-Similar pattern. Implementation-specific build with fallback.
+---
 
-### coverage.py
-PyPy triggers a different build configuration, not a failure.
+## TIER 4 — Counterexamples (show analysis is balanced)
 
-### python-zstandard
-Implementation-dependent backend selection, not a build failure.
+Include these when asked about scope to demonstrate the analysis
+is not cherry-picking every package that mentions PyPy.
+
+| Package | Why it is a counterexample |
+|---|---|
+| aiohttp | Falls back gracefully to pure-Python on PyPy |
+| multidict | Implementation-specific build with fallback |
+| coverage.py | PyPy triggers different build path, not a failure |
+| python-zstandard | Implementation-dependent backend selection, not failure |
+
+**Key message:** Implementation-dependent build behavior does NOT
+automatically justify implementation metadata. guppy3 is the case
+where existing mechanisms fail. Most packages are not guppy3.
+
+---
+
+## Research still needed
+
+Find 3-5 more packages like guppy3 where:
+- CPython classifier declared
+- sdist published
+- No PyPy wheels
+- Build script detects non-CPython
+
+**Search strategy:** PyPI packages with:
+`Programming Language :: Python :: Implementation :: CPython`
+AND published sdist AND no `pp*` wheel in any release.
+
+Also reach out to:
+- PyPy team — do they encounter packages where pre-build rejection
+  would help? Would they use a `Supported-Implementation` field?
+- GraalPy team — same question
+- Any endorsement from an alternate implementation team is far stronger
+  than finding more individual packages
 
 ---
 
@@ -125,23 +128,11 @@ Implementation-dependent backend selection, not a build failure.
 
 | Situation | Existing mechanism | New metadata needed? |
 |---|---|---|
-| CPython wheel | PEP 425 cp tag | No |
-| PyPy wheel | PEP 425 pp tag | No |
-| Generic pure-Python | py3-none-any | No |
+| CPython wheel exists | PEP 425 cp tag | No |
+| PyPy wheel exists | PEP 425 pp tag | No |
+| Generic pure-Python | py3-none-any | No (if correctly tagged) |
 | Conditional dependency | PEP 508 marker | No |
 | Builds everywhere, officially unsupported | Docs + classifiers | Unclear |
-| sdist build itself requires CPython | No release-level mechanism | Potentially yes |
-| Release should be skipped by version | Requires-Python | No |
-| Release should be skipped by implementation | No equivalent field | Potentially yes |
-
----
-
-## Research needed
-
-Find 5-10 real packages where:
-- The source build itself requires a specific Python implementation
-- A compatible wheel is unavailable for the user's implementation
-- The incompatibility is statically knowable before attempting the build
-
-guppy3 is one confirmed case. More needed before the proposal is
-strong enough to proceed past community objections.
+| sdist build requires CPython (guppy3) | No release-level mechanism | Potentially yes |
+| Direct install of CPython-only package | No normative field | Potentially yes |
+| Tooling across 1000s of packages | No standard field | Yes (Daniel's case) |

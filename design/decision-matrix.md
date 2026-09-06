@@ -1,84 +1,89 @@
 # Design Decision Matrix
 
-Decisions that must be made before writing the PEP.
-Each row shows the question, the current preferred answer, and
-confidence level. Low confidence = needs community input first.
+Last updated: September 6, 2026 (post Daniel Diniz reply, post Ralf PEP 725 post #98)
 
-| Decision | Preferred answer | Confidence | Notes |
-|---|---|---|---|
-| Field name | `Requires-Implementation` | High | Mirrors Requires-Python |
-| TOML key | `requires-implementation` | High | Mirrors requires-python |
-| Value type | List of strings | Medium | Could be specifier syntax — open question |
-| Value vocabulary | sys.implementation.name per PEP 421 | High | Open set, no registry needed |
-| Scope | Runtime only, not build | Medium | Build case may go to PEP 725 |
-| Missing field means | No restriction declared | High | Must NEVER default to cpython |
-| Multiple values | OR semantics | High | Either listed impl is acceptable |
-| Version constraints | Out of scope for v1 | Medium | Defer to future extension |
-| Supported-Platform | Not repurposed | High | Different scope, poor name |
-| Wheel interaction | Must define py3-none-any conflict rule | Low | Open question — unresolved |
-| Installer behavior | MUST reject or SHOULD warn? | Low | Needs community input |
-| PyPI behavior | Expose via data-core-metadata | Medium | No upload enforcement initially |
-| Classifiers | Remain descriptive, this field normative | High | Clearly stated distinction |
-| Environment markers | Remain dependency-level | High | Different semantic layer |
-| Backwards compat | Field optional, absent = unrestricted | High | No existing packages break |
+---
 
-## Unresolved questions — must answer before proceeding
+## Core design decisions
 
-### 1. Stale metadata (Ralf Gommers objection — CRITICAL / BLOCKING)
+| Decision | Previous | Current | Confidence | Changed? |
+|---|---|---|---|---|
+| Field name | `Requires-Implementation` | `Supported-Implementation` (TBD) | Low | YES |
+| Semantics | Hard exclusionary | Positive declaration of known support | Medium | YES |
+| TOML key | `requires-implementation` | `supported-implementation` (TBD) | Low | YES |
+| Value type | List of strings | List of strings | Medium | No |
+| Value vocabulary | `sys.implementation.name` per PEP 421 | Same | High | No |
+| Missing field means | No restriction | No claim made | High | Clarified |
+| Multiple values | OR semantics | Each listed impl is confirmed supported | High | Clarified |
+| Version constraints | Out of scope for v1 | Out of scope for v1 | Medium | No |
+| `Supported-Platform` | Not repurposed | Not repurposed | High | No |
+| Installer behavior | MUST reject | SHOULD warn | Medium | YES |
+| PyPI behavior | Expose via data-core-metadata | Same | Medium | No |
+| Classifiers | Remain descriptive | Same | High | No |
+| Backwards compat | Field optional, absent = unrestricted | Field optional, absent = no claim | High | Clarified |
 
-If a package declares `Requires-Implementation: cpython` and PyPy later
-gains compatibility, the declaration becomes wrong and potentially harmful.
+---
 
-Candidate answers to develop:
+## PEP 725 scope — now effectively resolved
 
-A) The field is per-release, not per-project.
-   foo 1.0 can be cpython-only while foo 1.1 adds pypy.
-   Metadata does not go stale because each release declares independently.
+**Post #98 from Ralf Gommers (September 6, 2026):**
 
-B) Requires-Python has the same staleness property and is accepted.
-   Python 3.8 support can be re-added but old declarations remain.
-   The community accepted this tradeoff.
+> "This PEP is ready; PEP 804 is quite close too, and will get a
+> (hopefully last) update soon, when the Packaging Steering Council
+> is seated."
 
-C) The field should describe "tested and supported" not
-   "technically impossible forever." Installers can treat it as advisory
-   for implementations not listed, not as a hard block.
+PEP 725 is in final stages awaiting the Packaging Steering Council.
+It is not being extended for Python implementation identity. Your
+comment (post #96) has not received a direct reply, but post #98
+makes clear the PEP scope is frozen.
 
-Status: UNRESOLVED. Must resolve before re-engaging in thread.
+**Implication:** Paul Moore's condition ("only worth raising as its own
+individual proposal if PEP 725 considers it out of scope") is now
+effectively met. PEP 725's scope is closed. A standalone proposal
+is warranted.
 
-### 2. Wheel / metadata conflict
+---
 
-What happens if a package declares:
-```
-Requires-Implementation: cpython
-```
-but publishes a `py3-none-any` wheel?
+## Unresolved questions (priority order)
 
-Options:
-- Wheel tags are authoritative, metadata is advisory
-- Metadata is authoritative, wheel tag is a lower bound
-- Publishing a contradictory combination is a validation error
+### 1. Absence semantics — CRITICAL / BLOCKING
 
-Status: UNRESOLVED. Must define in PEP.
+If `Supported-Implementation: cpython` is declared and `pypy` is absent:
 
-### 3. Is build-failure or runtime-failure the primary use case?
+| Option | Meaning | Verdict |
+|---|---|---|
+| A — Exclusionary | PyPy unsupported, MUST reject | Creates staleness — avoid |
+| B — Unknown | PyPy status unknown, allow + warn | Safe, honest, recommended |
+| C — Advisory | CPython confirmed, others may work, allow | Weakest signal |
 
-guppy3 is a build-failure case.
-A pure-Python package like objgraph is a runtime-failure case.
+**Current preference: B.** Absence means no claim, not incompatibility.
 
-These have different relationships to PEP 725:
-- Build case: Paul Moore thinks PEP 725 is the right venue
-- Runtime case: Ralf Gommers says PEP 725 does not cover it
+### 2. Field name — needs community input
 
-The proposal needs to clearly state which case it is solving,
-or explicitly solve both and justify why they belong together.
+Wait for the semantics decision before committing to a name.
+Do not use `Requires-Implementation` going forward in public posts.
 
-Status: PARTIALLY RESOLVED. Current preference is runtime-only for v1.
+### 3. Wheel / metadata conflict
 
-### 4. PEP 725 scope question — BLOCKING
+What happens if `Supported-Implementation: cpython` is declared but
+a `py3-none-any` wheel is published?
 
-Is the sdist build-failure case in or out of scope for PEP 725?
-Awaiting response from PEP 725 authors in Discourse thread.
+Preferred framing: the field operates at project/release level; wheel
+tags operate at artifact level. These answer different questions.
+Not a conflict by design.
 
-URL: https://discuss.python.org/t/pep-725-specifying-external-dependencies-in-pyproject-toml-round-2/103890
+### 4. SHOULD-warn vs MUST-reject
 
-Status: PENDING. Do not proceed until answered.
+Current preference: SHOULD-warn for initial version.
+Can be strengthened in a future revision if adoption demonstrates the
+positive-only semantics work well in practice.
+
+### 5. How to answer the "N=1" problem
+
+Daniel disclosed he works with the proposer and said the N of people
+with this need is 1 or very near to it. This is the biggest credibility
+problem in the thread.
+
+**Before re-engaging:** find at least one more independent person or
+tool that would benefit. PyRift users, GraalPy team, or PyPy team
+members are good candidates to reach.

@@ -1,126 +1,84 @@
-# Open Questions
+# Open design questions
 
-Last updated: September 6, 2026
-
----
-
-## Q1 — Absence semantics
-
-**Priority:** Blocking
-**Status:** Unresolved
-
-If `Supported-Implementation: cpython` is declared and `pypy` absent:
-
-- A: PyPy unsupported → MUST reject
-- B: PyPy unknown → allow, SHOULD warn
-- C: CPython confirmed, others may work → allow, no warning
-
-**Current preference: B.**
-Must resolve before any PEP draft is written.
+These are the questions that need to be resolved before a PEP draft
+can be written. Community input is welcome on all of them.
 
 ---
 
-## Q2 — Is PEP 725 scope closed to this use case?
+## 1. Absence semantics
 
-**Priority:** High
-**Status:** Effectively resolved
+If a release declares `Supported-Implementation: cpython` and `pypy`
+is not listed, what should a consumer infer?
 
-Ralf Gommers, PEP 725 co-author, posted (post #98, September 6, 2026):
+**Option A:** PyPy is unsupported — installer should reject.
 
-> "This PEP is ready; PEP 804 is quite close too, and will get a
-> (hopefully last) update soon, when the Packaging Steering Council
-> is seated."
+**Option B:** PyPy status is unknown — installer may warn but should
+allow the installation to proceed.
 
-The PEP is in final stages, scope is frozen. Your comment at post #96
-has not received a direct reply. No new scope is being added.
+**Option C:** CPython is confirmed; other implementations may work —
+no warning needed.
 
-**Conclusion:** Paul Moore's condition ("only worth raising as its own
-individual proposal if PEP 725 considers it out of scope") is now met.
-The standalone proposal route is open.
-
-**One action remaining:** Post a brief follow-up in your main thread
-noting that PEP 725 appears to be in final stages and unlikely to
-absorb this use case, and that you will proceed with exploring a
-standalone proposal.
+The current preference is **Option B**. Absence means the maintainer
+has not made a claim about that implementation, not that it is
+incompatible. This avoids stale metadata becoming a hard block as
+alternate implementations improve over time.
 
 ---
 
-## Q3 — More real-world cases needed
+## 2. Field name
 
-**Priority:** High
-**Status:** One strong case confirmed (guppy3)
-
-Ralf and Paul both said the use case N is too small. Daniel said N=1.
-This is the biggest credibility problem.
-
-**Research needed:** Find 3-5 more packages like guppy3:
-- CPython classifier declared
-- sdist published
-- No PyPy wheel
-- Build script detects non-CPython
-
-Good search: PyPI packages with `Programming Language :: Python ::
-Implementation :: CPython` AND published sdist AND no `pp*` wheel.
-
-Also consider: reach out to PyPy team or GraalPy team to ask whether
-they would use such a field. An endorsement from an alternate
-implementation team is far stronger than a second individual.
-
----
-
-## Q4 — Field name
-
-**Priority:** Medium
-**Status:** Unresolved, needs community input after semantics settled
+The field has been referred to as both `Requires-Implementation` and
+`Supported-Implementation`. The name should follow from the semantics
+decision above.
 
 Candidates:
-- `Supported-Implementation` — clearest, positive framing
+- `Supported-Implementation` — positive framing, clearest intent
 - `Known-Implementations` — neutral
-- `Tested-Implementation` — most honest
-
-Do not commit until Q1 (absence semantics) is resolved.
+- `Tested-Implementation` — most precise about what "supported" means
 
 ---
 
-## Q5 — Addressing the "N=1" credibility problem
+## 3. Installer behaviour
 
-**Priority:** Medium
-**Status:** Unresolved
+Should an unsatisfied declaration (running implementation not listed)
+cause the installer to reject the candidate or produce a warning?
 
-Daniel said the N of people with this need is 1 or very near to it,
-then disclosed he works with the proposer.
-
-Options:
-1. Find more real-world packages (Q3 above)
-2. Reach out to alternate implementation maintainers
-   (PyPy team, GraalPy team, RustPython, MicroPython)
-3. Find tooling that already tries to solve this with workarounds
-   (pip-audit, pip-tools, conda, uv) and document the workaround
-4. Survey PyPI: count packages declaring CPython-only classifiers
-   that have an sdist but no PyPy wheel — the ecosystem scale matters
+`Requires-Python` uses MUST-reject semantics. Given that implementation
+compatibility is more fluid than Python version compatibility, the
+initial proposal uses SHOULD-warn — allowing alternate implementations
+to still attempt installation while surfacing the information.
 
 ---
 
-## Q6 — AI concern response
+## 4. Wheel interaction
 
-**Priority:** Medium (credibility)
-**Status:** Addressed once, monitor for recurrence
+What should happen if a release declares `Supported-Implementation: cpython`
+but publishes a `py3-none-any` wheel?
 
-Facts on record:
-- AI tools used for prior art research
-- PyRift is a real toolkit for CPython/PyPy comparison
-- Daniel provided independent use cases (then disclosed relationship)
-- Research repo is public
-
-Do not over-defend. Answer once clearly, then move on.
-Repeated defensiveness looks worse than the original concern.
+The current view is that these operate at different semantic layers:
+the field describes the project/release, wheel tags describe a specific
+artifact. A `py3-none-any` wheel says the artifact has no
+implementation-specific compiled code; the field says the project has
+only been tested on CPython. These are not necessarily contradictory.
 
 ---
 
-## Q7 — What to post next in the Discourse thread
+## 5. Build vs runtime scope
 
-**Priority:** High
-**Status:** Draft ready in discourse/next-reply-draft.md
+Should the field describe only runtime compatibility, or also build-time
+requirements?
 
-Do not post until Paul's Reply 8 content is read.
-Share screenshot of Reply 8 immediately.
+The current proposal is runtime-only. Build-time requirements (where
+a source build itself fails on a given implementation) may be addressed
+separately, potentially through an extension to PEP 725.
+
+---
+
+## 6. Supported-Platform relationship
+
+`Supported-Platform` has existed in Core Metadata since 1.1 (PEP 314)
+but its semantics have never been specified. Its documented scope is
+OS and CPU for binary distributions.
+
+Should this proposal also clarify or deprecate `Supported-Platform`,
+or leave it unchanged?

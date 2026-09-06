@@ -1,89 +1,50 @@
-# Design Decision Matrix
+# Design decisions
 
-Last updated: September 6, 2026 (post Daniel Diniz reply, post Ralf PEP 725 post #98)
-
----
-
-## Core design decisions
-
-| Decision | Previous | Current | Confidence | Changed? |
-|---|---|---|---|---|
-| Field name | `Requires-Implementation` | `Supported-Implementation` (TBD) | Low | YES |
-| Semantics | Hard exclusionary | Positive declaration of known support | Medium | YES |
-| TOML key | `requires-implementation` | `supported-implementation` (TBD) | Low | YES |
-| Value type | List of strings | List of strings | Medium | No |
-| Value vocabulary | `sys.implementation.name` per PEP 421 | Same | High | No |
-| Missing field means | No restriction | No claim made | High | Clarified |
-| Multiple values | OR semantics | Each listed impl is confirmed supported | High | Clarified |
-| Version constraints | Out of scope for v1 | Out of scope for v1 | Medium | No |
-| `Supported-Platform` | Not repurposed | Not repurposed | High | No |
-| Installer behavior | MUST reject | SHOULD warn | Medium | YES |
-| PyPI behavior | Expose via data-core-metadata | Same | Medium | No |
-| Classifiers | Remain descriptive | Same | High | No |
-| Backwards compat | Field optional, absent = unrestricted | Field optional, absent = no claim | High | Clarified |
+Current thinking on each design dimension. All of these are open
+for discussion — this reflects the current state of the research,
+not a final specification.
 
 ---
 
-## PEP 725 scope — now effectively resolved
-
-**Post #98 from Ralf Gommers (September 6, 2026):**
-
-> "This PEP is ready; PEP 804 is quite close too, and will get a
-> (hopefully last) update soon, when the Packaging Steering Council
-> is seated."
-
-PEP 725 is in final stages awaiting the Packaging Steering Council.
-It is not being extended for Python implementation identity. Your
-comment (post #96) has not received a direct reply, but post #98
-makes clear the PEP scope is frozen.
-
-**Implication:** Paul Moore's condition ("only worth raising as its own
-individual proposal if PEP 725 considers it out of scope") is now
-effectively met. PEP 725's scope is closed. A standalone proposal
-is warranted.
-
----
-
-## Unresolved questions (priority order)
-
-### 1. Absence semantics — CRITICAL / BLOCKING
-
-If `Supported-Implementation: cpython` is declared and `pypy` is absent:
-
-| Option | Meaning | Verdict |
+| Dimension | Current direction | Notes |
 |---|---|---|
-| A — Exclusionary | PyPy unsupported, MUST reject | Creates staleness — avoid |
-| B — Unknown | PyPy status unknown, allow + warn | Safe, honest, recommended |
-| C — Advisory | CPython confirmed, others may work, allow | Weakest signal |
+| Field name | `Supported-Implementation` | Open to alternatives |
+| TOML key | `supported-implementation` | Follows field name |
+| Value type | List of strings | e.g. `["cpython", "pypy"]` |
+| Value vocabulary | `sys.implementation.name` per PEP 421 | Open set, no registry needed |
+| Semantics | Positive declaration of known support | Not an exclusionary constraint |
+| Missing field | No claim made | Does not mean incompatible |
+| Multiple values | Each listed implementation is confirmed supported | OR semantics |
+| Version constraints | Out of scope for initial proposal | Can be added later |
+| Scope | Runtime compatibility only | Build-time is separate |
+| Installer behaviour | SHOULD-warn if implementation not listed | Not MUST-reject |
+| `Supported-Platform` | Leave unchanged for now | Different scope |
+| Backwards compatibility | Field is optional | No existing packages affected |
 
-**Current preference: B.** Absence means no claim, not incompatibility.
+---
 
-### 2. Field name — needs community input
+## Why positive semantics rather than exclusionary
 
-Wait for the semantics decision before committing to a name.
-Do not use `Requires-Implementation` going forward in public posts.
+The original framing was `Requires-Implementation: cpython`, which
+would mean "only CPython is allowed." This creates a staleness problem:
+if PyPy later gains compatibility with a package, the old metadata
+becomes a harmful hard block that cannot be retroactively corrected
+for published releases.
 
-### 3. Wheel / metadata conflict
+A positive declaration (`Supported-Implementation: cpython`) means
+"CPython is known to work." It does not mean PyPy cannot work. As
+alternate implementations improve, new releases can simply add them
+to the list. Old releases remain accurate — they never claimed
+incompatibility, only declared what was confirmed.
 
-What happens if `Supported-Implementation: cpython` is declared but
-a `py3-none-any` wheel is published?
+---
 
-Preferred framing: the field operates at project/release level; wheel
-tags operate at artifact level. These answer different questions.
-Not a conflict by design.
+## Why not just use existing mechanisms
 
-### 4. SHOULD-warn vs MUST-reject
-
-Current preference: SHOULD-warn for initial version.
-Can be strengthened in a future revision if adoption demonstrates the
-positive-only semantics work well in practice.
-
-### 5. How to answer the "N=1" problem
-
-Daniel disclosed he works with the proposer and said the N of people
-with this need is 1 or very near to it. This is the biggest credibility
-problem in the thread.
-
-**Before re-engaging:** find at least one more independent person or
-tool that would benefit. PyRift users, GraalPy team, or PyPy team
-members are good candidates to reach.
+| Mechanism | What it does | What it does not do |
+|---|---|---|
+| Wheel tags (PEP 425) | Artifact-level implementation filtering | Does not apply to sdists |
+| `implementation_name` markers (PEP 508) | Conditional dependency selection | Does not describe the package's own compatibility |
+| Trove classifiers | Descriptive declaration | Not a normative installer constraint |
+| `Requires-Python` | Python version constraint | Does not identify implementation |
+| `Supported-Platform` | OS/CPU for binary dists (semantics undefined) | Wrong scope and name |

@@ -1,101 +1,57 @@
-# PEP 780 Notes
+# PEP 780 Notes — ABI Features
 
-## Purpose
+**URL:** https://peps.python.org/pep-0780/
+**Status:** Draft / active discussion
+**Relevance:** High
 
-PEP 780 proposes ABI features as Python packaging environment markers.
+PEP 780 proposes `sys_abi_features` as an environment marker for ABI
+characteristics of the Python interpreter.
 
-It is important prior art because Python implementation identity does not
-fully describe interpreter compatibility.
-
-## Core idea
-
-PEP 780 proposes an environment marker representing ABI characteristics of
-the Python interpreter.
-
-Examples discussed include characteristics such as:
+Examples include:
 
 - free-threading;
 - GIL-enabled operation;
 - debug builds;
 - pointer width.
 
-The proposal initially used:
-
-```text
-sys_abi_features
-```
-
-as the environment marker.
-
-The exact proposal remains subject to discussion and revision.
-
 ## Why this matters
 
-Consider:
+Implementation identity is not the complete compatibility surface.
+
+For example:
 
 ```text
 CPython
+CPython + free-threading
 ```
 
-and:
+have the same implementation identity but may have different package
+compatibility.
 
-```text
-CPython free-threaded
-```
-
-Both have:
-
-```text
-sys.implementation.name == "cpython"
-```
-
-but a package may support one and not the other.
-
-Therefore:
-
-```text
-implementation identity
-```
-
-cannot be treated as a complete compatibility model.
-
-## Relationship to this research
-
-The proposed implementation-support field should be scoped to
-implementation identity.
-
-Conceptually:
+## Correct layering
 
 ```text
 Supported-Implementation
-        ↓
-CPython / PyPy / etc.
+    implementation identity
 
-PEP 780-style ABI information
-        ↓
-free-threading / debug / pointer width / etc.
+PEP 780
+    ABI/environment features
 
 Requires-Python
-        ↓
-Python version
+    Python version
 
 Wheel tags
-        ↓
-built artifact compatibility
+    built artifact compatibility
 ```
 
-These are complementary dimensions.
+## Guppy3
 
-## Guppy3 connection
+Guppy3 is a useful boundary case because its published support information
+distinguishes CPython from free-threaded CPython.
 
-Guppy3 is particularly useful evidence because its published compatibility
-information distinguishes CPython support from free-threaded CPython support.
+This demonstrates why an implementation-support field must not become a
+general-purpose ABI expression language.
 
-This demonstrates why a future standard should not attempt to encode all
-interpreter compatibility into one implementation-name field.
+Current conclusion:
 
-## Current conclusion
-
-PEP 780 is not an alternative to implementation identity metadata.
-
-It is complementary prior art and an important scope boundary.
+> PEP 780 is complementary prior art and a scope boundary.

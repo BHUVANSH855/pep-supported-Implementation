@@ -1,17 +1,12 @@
-# PEP 425 / Platform Compatibility Tags
+# PEP 425 Notes — Wheel Compatibility Tags
 
-## Purpose
+**URL:** https://peps.python.org/pep-0425/
+**Status:** Final
+**Relevance:** High
 
-PEP 425 introduced compatibility tags for built distributions, especially
-wheels.
+## What PEP 425 does
 
-The current platform compatibility tag specification is the authoritative
-reference for modern wheel tag behavior.
-
-## Relevant model
-
-A wheel's compatibility is represented using tags containing dimensions such
-as:
+PEP 425 defines three wheel compatibility dimensions:
 
 ```text
 python tag
@@ -19,54 +14,54 @@ abi tag
 platform tag
 ```
 
-The Python tag identifies the implementation and Python version supported by
-the built artifact.
+The Python tag identifies the implementation and Python version.
 
-Examples include implementation-specific tags such as:
-
-```text
-cp311
-pp311
-```
-
-## Important distinction
-
-Wheel tags describe the **built distribution artifact**.
-
-They do not form a general release-level Core Metadata declaration.
-
-This distinction matters because an sdist has not yet been built for a
-specific target environment.
-
-A typical situation is:
+Examples include:
 
 ```text
-Project release
-├── source distribution
-├── CPython Linux wheel
-├── CPython Windows wheel
-└── CPython macOS wheel
+py
+cp
+pp
+jy
 ```
 
-Each wheel can describe its own compatibility through its tags.
+PEP 425 describes `py` as generic Python and says other implementations
+should use `sys.implementation.name`.
 
-The sdist does not acquire an equivalent implementation tag merely because
-one or more compatible wheels exist.
+## Why this matters
 
-## Why this matters to the research
+Wheel tags are explicitly designed so installers can determine whether a
+built distribution is compatible without reading its full metadata.
 
-The proposal being investigated is not intended to replace wheel tags.
+That is a solved artifact-level problem.
 
-Instead, it asks whether a release-level implementation declaration could
-provide information before a compatible wheel is available.
+## The residual distinction
+
+A wheel can say:
+
+```text
+py3-none-any
+```
+
+while the producer says:
+
+```text
+CPython only
+```
+
+The strongest empirical examples in this repository are:
+
+- RestrictedPython 8.5;
+- HAX 0.3.0;
+- Likepy 0.3.0;
+- simple-ctx-log 0.0.3.
 
 ## Current conclusion
 
-Wheel tags solve the artifact-level problem.
+Do not claim wheel tags are inadequate.
 
-They do not directly answer the research question:
+Instead:
 
-> How should a source distribution declare release-level Python
-> implementation compatibility before it is built?
-
-That is the boundary between this prior art and the proposed research.
+> Wheel tags solve built-artifact compatibility. The research asks whether
+> release-level producer support is a separate fact that sometimes cannot be
+> encoded honestly in the artifact tag.

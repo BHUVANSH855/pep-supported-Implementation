@@ -1,83 +1,55 @@
 # PEP 725 Notes
 
-## Purpose
+**URL:** https://peps.python.org/pep-0725/
+**Status:** Draft / active discussion
+**Relevance:** High
 
-PEP 725 is important prior art because it addresses dependency information
-associated with building and hosting software.
+PEP 725 proposes standardized external dependency metadata in `pyproject.toml`
+under `[external]`.
 
-It must be considered before proposing a new field for build-time Python
-implementation requirements.
-
-## What PEP 725 addresses
-
-PEP 725 provides a framework for describing external dependencies and
-distinguishes requirements relevant to different stages of the packaging
-process.
-
-This includes concepts related to:
-
-- build requirements;
-- host requirements;
-- runtime external dependencies.
-
-## Relevance to Python implementations
-
-The question for this research is whether a Python implementation itself
-could be modeled using the PEP 725 dependency framework.
-
-For example, conceptually:
+It distinguishes:
 
 ```text
-build requires CPython
+build-requires
+host-requires
+dependencies
 ```
 
-could be treated as a dependency on a virtual implementation.
+and explicitly considers cross-compilation.
 
-However, the current PEP 725 specification does not define CPython, PyPy,
-or other Python implementations as a standardized virtual dependency
-vocabulary for this purpose.
+## Why it matters here
 
-## Important distinction
+A package might require a particular Python implementation **to build**.
 
-There are two different statements:
+That is different from:
 
 ```text
-The released package supports CPython.
+the resulting release supports a particular implementation at runtime
 ```
 
-and:
+The research must keep these concepts separate.
 
-```text
-The package must be built using CPython.
-```
+## Current specification boundary
 
-The first is a release/runtime compatibility statement.
+PEP 725 does not currently define CPython/PyPy/etc. as the implementation
+support vocabulary being investigated here.
 
-The second is a build-environment requirement.
+It therefore does not directly replace a release-level implementation-support
+declaration.
 
-A future design should avoid assuming that these are the same metadata field.
+## Important caution
 
-## Relationship to this research
+The research should not say:
 
-PEP 725 provides a possible alternative direction for the build-time case.
+> PEP 725 cannot solve implementation requirements.
 
-Therefore the existence of PEP 725 means that a new
-`Requires-Implementation` field should not be proposed without first
-explaining why build-time implementation requirements cannot or should not be
-represented there.
+The correct statement is:
 
-At the same time, the current PEP 725 specification does not itself provide
-the release-level runtime implementation compatibility declaration being
-investigated here.
+> PEP 725 is a relevant build/host dependency mechanism and may be extended
+> or combined with other mechanisms; its current scope is not equivalent to
+> release-level implementation support.
 
 ## Current conclusion
 
-PEP 725 is:
-
-- relevant to build-time implementation requirements;
-- not currently a direct solution for release-level implementation support;
-- a potential alternative or complementary mechanism;
-- an important unresolved design dependency.
-
-The research should therefore avoid claiming that PEP 725 is irrelevant or
-that it cannot be extended.
+PEP 725 is a major design dependency and alternative to investigate, not an
+irrelevant proposal.

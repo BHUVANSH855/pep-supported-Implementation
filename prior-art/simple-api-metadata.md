@@ -1,66 +1,53 @@
-# Simple API Metadata
+# Simple API Core Metadata
 
-## Purpose
+The Simple Repository API can expose Core Metadata associated with a
+distribution.
 
-The Simple Repository API provides package indexes with a standardized way to
-list distribution files.
-
-Core Metadata can optionally be exposed alongside distribution links.
-
-## Relevant metadata
-
-The current Simple API uses:
+Relevant attributes:
 
 ```text
 data-core-metadata
-```
-
-for HTML responses.
-
-The JSON representation uses:
-
-```text
 core-metadata
 ```
 
-## Why this matters
+depending on the representation.
 
-The research problem can be represented as:
+References:
 
-```text
-package index
-    ↓
-release metadata
-    ↓
-implementation compatibility
-    ↓
-candidate selection
-```
+- PEP 658: https://peps.python.org/pep-0658/
+- PEP 714: https://peps.python.org/pep-0714/
 
-rather than requiring:
+## Research relevance
+
+A release-level Core Metadata field could potentially be inspected before the
+distribution is downloaded, when the repository provides the metadata.
+
+Conceptually:
 
 ```text
-download sdist
-    ↓
-build
-    ↓
-discover incompatibility
+index
+  ↓
+Core Metadata
+  ↓
+implementation support
+  ↓
+candidate filtering
 ```
 
 ## Limitation
 
-Core Metadata exposure is optional.
+The metadata sidecar is optional.
 
-Therefore the existence of a standardized field would not automatically make
-pre-download filtering universally possible.
+Therefore:
 
-Tools would still need a fallback path.
+```text
+standardized field
+```
 
-## Relationship to PEP 658 and PEP 714
+does not imply:
 
-PEP 658 introduced the metadata-serving mechanism.
+```text
+field always available before download
+```
 
-PEP 714 standardized the current naming of the metadata attributes.
-
-These specifications should therefore be considered together when evaluating
-the practical benefits of a new Core Metadata field.
+A future design would need to specify fallback behavior.

@@ -1,47 +1,66 @@
-# PEP 508 — Dependency specification for Python Software Packages
+# PEP 508 / Dependency Specifier Notes
 
-**URL:** https://peps.python.org/pep-0508/
-**Status:** Final
-**Relevance:** Medium — defines environment markers including
-implementation_name, but at the dependency level not the distribution level
+**URL:** https://packaging.python.org/en/latest/specifications/dependency-specifiers/
+**Relevance:** High
 
-## Relevant environment markers
+## Existing implementation environment markers
 
-| Marker | Corresponds to |
-|---|---|
-| `implementation_name` | `sys.implementation.name` |
-| `implementation_version` | `sys.implementation.version` |
-| `platform_python_implementation` | `platform.python_implementation()` |
+Dependency markers include:
 
-## What markers solve
-
-Conditional dependency installation. Example:
-
+```text
+platform_python_implementation
+implementation_name
+implementation_version
 ```
+
+For example:
+
+```text
 Requires-Dist: cffi; implementation_name == "pypy"
 ```
 
-Meaning: install cffi only when running on PyPy.
+## What markers solve
 
-## Critical semantic distinction
+They answer:
 
-A marker on `Requires-Dist` describes when a dependency is needed.
-It does NOT describe whether the package itself is compatible with
-a given implementation.
+> Under which environments is this dependency required?
 
-There is no syntactic way to express "this package only runs on
-CPython" using Requires-Dist markers. You would have no dependency
-to conditionally include.
+This is valuable and already standardized.
 
-## What PEP 508 does NOT solve
+## What they do not directly solve
 
-Distribution-level implementation compatibility. The gap this
-research addresses is precisely NOT covered by PEP 508.
+They do not express:
 
-## Key distinction for discussions
+> This distribution itself is unsupported on PyPy.
 
-When reviewers suggest "just use environment markers":
+There is no normal `Requires-Dist` entry whose semantic meaning is:
 
-> Markers describe dependency conditions.
-> Requires-Implementation would describe the distribution itself.
-> These are different semantic layers.
+```text
+reject the current distribution when its own marker is false
+```
+
+## Important warning
+
+This does not mean PEP 508 is irrelevant.
+
+A package may solve an implementation-specific dependency problem completely
+using markers.
+
+Therefore the research corpus must distinguish:
+
+```text
+implementation-specific dependency
+```
+
+from:
+
+```text
+implementation-specific release support
+```
+
+## Current conclusion
+
+PEP 508 is a complementary mechanism.
+
+The remaining question is whether release-level support needs a separate
+normative representation.

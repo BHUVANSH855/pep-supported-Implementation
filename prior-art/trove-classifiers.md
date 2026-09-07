@@ -1,57 +1,54 @@
 # Trove Classifier Prior Art
 
-## Existing implementation classifiers
+## Existing vocabulary
 
-The Python packaging ecosystem already has classifiers such as:
+Python packages can publish:
 
 ```text
 Programming Language :: Python :: Implementation :: CPython
 Programming Language :: Python :: Implementation :: PyPy
 ```
 
-These are useful for describing project support.
+This is important evidence because the ecosystem already has a concept of
+implementation support.
 
-## Why they are relevant
+## What classifiers provide
 
-This means a proposed standard is not inventing the concept of Python
-implementation compatibility from nothing.
+They are useful for:
 
-There is already an established vocabulary used by projects and package
-indexes.
+- PyPI display;
+- search/filtering;
+- human communication;
+- ecosystem classification.
 
-## Limitation
+## What is not currently defined
 
-Trove classifiers are classification metadata.
-
-They do not currently define the same semantics as a normative compatibility
-constraint.
-
-In particular, there is no general installer rule equivalent to:
+There is no general Core Metadata rule saying:
 
 ```text
-if current implementation is not listed:
-    reject candidate
+if current implementation is not represented by an implementation classifier:
+    reject this distribution candidate
 ```
 
-associated with these classifiers.
+That is the key semantic distinction.
 
-## Important distinction
+## 2024 discussion
 
-The research should therefore say:
+Paul Moore argued that classifiers were appropriate for the original use case
+of declaring which implementations a project is willing to support without
+forcing anything.
 
-> Python implementation support can already be declared descriptively.
+Source:
+https://discuss.python.org/t/python-implementation-in-metadata/42653
 
-It should not say:
+This should be treated as an important counterargument to a new field.
 
-> Python implementation support cannot currently be declared.
+## Current research question
 
-The unresolved issue is whether the packaging ecosystem needs a structured,
-normative, machine-actionable compatibility declaration.
+The proposal should therefore answer:
 
-## Current conclusion
+> Why does the ecosystem need a second, normative representation rather than
+> continuing to use classifiers?
 
-Trove classifiers are important prior art and a possible source of existing
-vocabulary.
-
-Any future proposal should explain why classifiers are insufficient for the
-specific use case rather than ignoring them.
+If that question cannot be answered convincingly, the new field should not be
+standardized.

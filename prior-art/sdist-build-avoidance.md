@@ -1,71 +1,60 @@
 # Sdist Build Avoidance
 
-## Purpose
+## Problem
 
-There are packaging discussions about avoiding unwanted attempts to build
-source distributions.
-
-These discussions provide important problem-space evidence.
-
-## General problem
-
-A package index may contain:
+An index can provide:
 
 ```text
-project version
-├── wheels for some environments
+project-version
+├── compatible wheels
 └── sdist
 ```
 
-If the resolver cannot find a compatible wheel, it may select the sdist and
-attempt to build it.
+When no compatible wheel is selected, an installer may attempt the sdist.
 
-That build may:
+The build can fail because of:
 
-- require native dependencies;
-- require a particular build environment;
-- fail on unsupported platforms;
-- fail on unsupported Python implementations;
-- be intended only for redistributors or package maintainers.
-
-## Why this is relevant
-
-The desired outcome in some cases is:
-
-```text
-know that the sdist is unsuitable
-        ↓
-avoid expensive build attempt
-```
-
-rather than:
-
-```text
-attempt build
-        ↓
-discover incompatibility
-```
-
-## Important limitation
-
-Sdist build avoidance is a broader problem than Python implementation
-compatibility.
-
-Possible causes include:
-
+- unsupported implementation;
 - unsupported platform;
-- missing system dependency;
 - missing compiler;
-- unsupported ABI;
-- project policy;
-- implementation-specific incompatibility.
+- missing external dependency;
+- incompatible ABI;
+- project policy.
 
-Therefore build-avoidance discussions should not be presented as proof that
-`Supported-Implementation` is the correct solution.
+## Why it matters
 
-## Research conclusion
+The ecosystem has a broader need for pre-build information.
 
-These discussions establish that pre-build candidate information can have
-real value.
+But:
 
-They do not determine what metadata mechanism should carry that information.
+```text
+"Do not automatically build this sdist"
+```
+
+is not equivalent to:
+
+```text
+"This release does not support PyPy"
+```
+
+A source-build policy mechanism could solve the first problem without
+communicating the second.
+
+## Important residual test
+
+For a package with:
+
+```text
+py3-none-any wheel
+CPython-only producer policy
+```
+
+source-build avoidance alone does not explain why the existing wheel should be
+rejected.
+
+Therefore the two problems should remain separate in the research.
+
+Current conclusion:
+
+> Sdist-build avoidance is adjacent prior art and a possible alternative for
+> some cases, but not a complete semantic replacement.

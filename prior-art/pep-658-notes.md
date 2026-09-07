@@ -1,60 +1,50 @@
 # PEP 658 Notes
 
-## Purpose
+**URL:** https://peps.python.org/pep-0658/
+**Status:** Final
+**Relevance:** High
 
-PEP 658 defines a mechanism for repositories to serve Core Metadata
-separately from distribution files.
+PEP 658 allows repositories to expose Core Metadata separately from a
+distribution file.
 
-## Core idea
+A client can therefore potentially inspect metadata without downloading the
+entire wheel or sdist.
 
-A Simple API repository can expose metadata associated with a distribution
-without requiring the client to download the full distribution first.
+The mechanism is optional.
 
-This is directly relevant to compatibility metadata.
+## Research relevance
 
-If implementation support were represented in Core Metadata, PEP 658 provides
-a mechanism through which tooling could potentially inspect that declaration
-before downloading or building the distribution.
-
-## Important limitation
-
-The metadata sidecar is optional.
-
-Therefore a client cannot assume that every repository will expose Core
-Metadata separately.
-
-A proposed compatibility field must not assume universal pre-download
-metadata availability.
-
-## Relationship to sdists
-
-PEP 658 is especially relevant to the research question because the desired
-workflow is conceptually:
+If implementation support were a Core Metadata field, the desired workflow
+could be:
 
 ```text
-repository
-    ↓
+index
+  ↓
 Core Metadata
-    ↓
-implementation compatibility decision
-    ↓
+  ↓
+implementation-support decision
+  ↓
 download/build only if appropriate
 ```
 
 rather than:
 
 ```text
-repository
-    ↓
 download sdist
-    ↓
-build sdist
-    ↓
+  ↓
+build
+  ↓
 discover incompatibility
 ```
 
-## Current conclusion
+## Important limitation
 
-PEP 658 provides an existing transport mechanism for standardized metadata.
+PEP 658 does not guarantee metadata sidecars.
 
-It does not define implementation compatibility semantics itself.
+Therefore the existence of a new field would not mean every resolver can
+always see it before downloading an artifact.
+
+Current conclusion:
+
+> PEP 658 makes the proposed workflow technically plausible but does not
+> establish that a new field is needed.

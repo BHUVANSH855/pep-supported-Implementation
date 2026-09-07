@@ -1,47 +1,58 @@
-# Prior discussion: "Python implementation in metadata" (January 2024)
+# Prior Discussion — Python Implementation in Metadata (January 2024)
 
 **URL:** https://discuss.python.org/t/python-implementation-in-metadata/42653
-**Date:** January 7-10, 2024
-**Status:** Closed, no action taken
 
-## Summary
+## What was asked
 
-A user asked why Python implementation is not stored in package metadata,
-with the goal of being able to force PyPy usage.
+The original thread asked why Python implementation information was not stored
+in package metadata and described a desire to force PyPy for an application.
 
 ## Key responses
 
-**Paul Moore:** Questioned why a library would need to block other
-implementations. Suggested classifiers and wheel tags as the
-appropriate existing mechanism.
+Paul Moore questioned the use case for a library and suggested classifiers
+as the appropriate way to declare which implementations a project is willing
+to support without forcing anything.
 
-**Sinoroc:** Suggested Trove classifiers.
+Sinoroc suggested Trove classifiers.
 
-**C.A.M. Gerlach:** Pointed to classifiers, wheel tags, and
-backend/plugin approaches as existing partial mechanisms.
+C.A.M. Gerlach pointed to classifiers, wheel tags, and backend/plugin logic as
+existing mechanisms.
 
-## How this differs from the current proposal
+## Why this matters
 
-The 2024 thread was about a user wanting to FORCE a particular
-implementation in a development environment.
+The thread establishes that:
 
-The current proposal is about a PACKAGE declaring its own runtime
-compatibility as a normative constraint for installer candidate
-selection — a different semantic layer, especially for sdists.
+```text
+implementation support can already be declared descriptively
+```
 
-## How to cite this in discussions
+It does not establish that:
 
-Do NOT say "the community said classifiers were inadequate."
-Paul Moore and C.A.M. Gerlach argued classifiers were appropriate
-for the use case discussed (forcing an implementation).
+```text
+implementation support cannot have normative resolver semantics
+```
 
-DO say: "The 2024 discussion addressed a user's desire to force
-an implementation. The current proposal addresses package-level
-compatibility declaration for installer use — a different problem."
+The current research therefore treats the thread as **counter-evidence that
+must be answered**, not as a rejection of the entire concept.
 
-## Why this thread does not block the current proposal
+## Correct way to describe the difference
 
-- No PEP was proposed or rejected
-- No PR was opened
-- The use case discussed was different
-- The thread closed with no normative resolution
+Original use case:
+
+```text
+user wants to force a development/application interpreter
+```
+
+Current research:
+
+```text
+release producer wants to declare implementation support
+for candidate selection, especially where artifacts are generic
+```
+
+Those are related but distinct problems.
+
+## Research conclusion
+
+The 2024 discussion strengthens the requirement that any new proposal must
+explain why classifiers are insufficient for the new semantics.

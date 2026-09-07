@@ -1,46 +1,32 @@
-# Supported-Platform — Core Metadata field (historical)
+# `Supported-Platform` Historical Core Metadata
 
-**Defined in:** PEP 314 (Core Metadata 1.1, 2003)
-**Current spec:** Core Metadata 2.6
-**Status:** Exists but semantics never specified
+**Current specification:** Core Metadata 2.6
+**Source:** https://packaging.python.org/en/latest/specifications/core-metadata/
 
-## What the spec says
+The existing `Supported-Platform` field says it can describe the OS and CPU
+for which a binary distribution was compiled.
 
-> "Binary distributions containing a PKG-INFO file will use the
-> Supported-Platform field in their metadata to specify the OS and
-> CPU for which the binary distribution was compiled. The semantics
-> of the Supported-Platform field are not specified in this PEP."
+Its semantics are explicitly not specified.
 
-That sentence has survived every Core Metadata revision from 1.1
-through 2.6 — over 20 years — unchanged.
+Example historical values include:
 
-## Historical examples of use
-
-```
+```text
 Supported-Platform: RedHat 7.2
 Supported-Platform: i386-win32-2791
 ```
 
-The field was designed for OS + CPU identification of binary
-distributions, not for Python implementation identity.
+## Why it should not simply be repurposed
 
-## Why we do NOT propose repurposing this field
+1. Its documented subject is OS/CPU, not Python implementation.
+2. Its semantics are undefined.
+3. Its name does not identify interpreter compatibility.
+4. Its historical purpose is tied to binary distributions.
+5. Reusing it would create ambiguous semantics for existing consumers.
 
-1. Its documented scope is OS and CPU, not Python implementation
-2. Its semantics are undefined, making any new use potentially
-   conflicting with existing (undocumented) uses
-3. The name is misleading for an interpreter requirement
-4. The plural field has no defined logical model (OR? AND?)
-5. It applies to "binary distributions" — not to sdists
+## Current conclusion
 
-## The correct approach
+A new implementation-support concept should not silently overload this
+historical field.
 
-Requires-Implementation fills a distinct semantic role:
-
-| Field | Scope | Semantics |
-|---|---|---|
-| Supported-Platform | OS / CPU for binary dists | Undefined |
-| Requires-Python | Python version | Normative installer constraint |
-| Requires-Implementation | Python implementation | Proposed normative constraint |
-
-When reviewers ask "why not use Supported-Platform?", cite this file.
+The repository instead investigates whether a distinct semantic layer is
+needed.

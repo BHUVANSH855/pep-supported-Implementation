@@ -1,69 +1,37 @@
 # PEP 621 Notes
 
-## Purpose
+**URL:** https://peps.python.org/pep-0621/
+**Relevance:** Medium
 
-PEP 621 defines how project metadata is declared in `pyproject.toml`.
-
-It is important because a new standardized Core Metadata field would need a
-corresponding project-level representation if projects are expected to
-declare it statically.
-
-## Relevant model
-
-PEP 621 defines the:
+PEP 621 defines standardized project metadata in:
 
 ```toml
 [project]
 ```
 
-table.
+A future Core Metadata field would likely need a corresponding project-level
+declaration if publishers are expected to author it in `pyproject.toml`.
 
-Fields defined by PEP 621 map to Core Metadata fields.
-
-For example:
-
-```toml
-[project]
-requires-python = ">=3.10"
-```
-
-maps to:
-
-```text
-Requires-Python: >=3.10
-```
-
-## Important constraint
-
-Tools cannot arbitrarily add new standardized fields to `[project]`.
-
-A new field requires a subsequent standards change.
-
-Therefore a hypothetical:
+For example, a hypothetical:
 
 ```toml
 [project]
-supported-implementation = ["cpython"]
+supported-implementations = ["cpython"]
 ```
 
-would require a specification defining:
+would require a standards change defining:
 
-1. the TOML field;
-2. its mapping to Core Metadata;
-3. its semantics;
-4. its validation rules;
-5. dynamic/static behavior;
-6. interaction with existing metadata.
+- field name;
+- value vocabulary;
+- Core Metadata mapping;
+- validation;
+- static/dynamic behavior;
+- release consistency;
+- interaction with classifiers.
 
-## Relationship to this research
+PEP 621 itself does not provide an implementation-support field.
 
-PEP 621 establishes the project metadata layer that a future implementation
-compatibility field would likely need to integrate with.
+Current conclusion:
 
-It does not provide such a field itself.
-
-## Current conclusion
-
-PEP 621 supports the feasibility of adding standardized project metadata,
-but does not provide evidence that implementation compatibility should be
-added.
+> PEP 621 provides the project-metadata integration mechanism, not evidence
+> that the proposed field is necessary.

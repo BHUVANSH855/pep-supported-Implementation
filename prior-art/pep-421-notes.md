@@ -1,42 +1,32 @@
-# PEP 421 — sys.implementation
+# PEP 421 Notes — `sys.implementation`
 
 **URL:** https://peps.python.org/pep-0421/
-**Status:** Final
-**Relevance:** High — provides the vocabulary for implementation identity
+**Relevance:** High
 
-## What it does
+PEP 421 standardized `sys.implementation` as a source of interpreter
+implementation identity and related details.
 
-Introduces `sys.implementation` as a standard namespace for Python
-implementation information. Defines `sys.implementation.name` as a
-lowercase string identifying the running implementation.
+## Research relevance
 
-## Known values
+The environment side of the problem is therefore already standardized.
 
-| Implementation | sys.implementation.name |
-|---|---|
-| CPython | `cpython` |
-| PyPy | `pypy` |
-| Jython | `jython` |
-| IronPython | `ironpython` |
-| GraalPy | `graalpy` |
-| MicroPython | `micropython` |
+Conceptually:
 
-**Important:** PEP 421 does NOT define a closed registry.
-The set is open. Future implementations use their own name.
+```text
+Environment:
+    sys.implementation.name
+```
 
-## Relevance to this proposal
+The missing research question is:
 
-If `Requires-Implementation` is defined, values should correspond
-to `sys.implementation.name` per PEP 421. No new vocabulary needed.
-No central registry required.
+```text
+Release:
+    which implementation names does the producer support?
+```
 
-## What PEP 421 does NOT do
+## Important boundary
 
-- It does not define packaging metadata
-- It does not define a list of allowed implementation names
-- It does not create any installer behavior
+Do not invent a new environment identity mechanism as part of this proposal.
 
-## Key quote
-
-> "The name must be a valid Python identifier and should not be
-> changed by the implementation after initialization."
+A future release-support field should, if standardized, define a precise
+relationship to `sys.implementation.name`.

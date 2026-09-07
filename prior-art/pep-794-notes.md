@@ -1,63 +1,40 @@
-# PEP 794 Notes
+# PEP 794 Notes — Release-Level Core Metadata
 
-## Purpose
+**URL:** https://peps.python.org/pep-0794/
+**Status:** Accepted
+**Relevance:** High
 
-PEP 794 is useful prior art for project/release-level metadata describing
-properties of Python packages.
+PEP 794 adds `Import-Name` and `Import-Namespace` to Core Metadata.
 
-It proposes `Import-Name` and `Import-Namespace` metadata.
-
-## Relevant idea
-
-The important structural precedent is that metadata describing a project's
-relationship to Python imports can be represented as standardized Core
-Metadata.
-
-This demonstrates that project-level facts can be standardized independently
-of individual wheel filenames.
-
-## Relationship to this research
-
-A proposed implementation compatibility field would follow a similar
-high-level model:
+The important structural precedent is:
 
 ```text
-project/release metadata
+project/release fact
         ↓
 Core Metadata
         ↓
-available across distribution artifacts
+same release-level information across artifacts
+        ↓
+potentially served by an index
 ```
 
-The proposed field would differ in what it describes:
+PEP 794 explicitly explains that the metadata can be served by an index
+independently of a wheel or sdist, and that the metadata describes the
+project version rather than an individual artifact.
 
-```text
-PEP 794:
-    import names / namespaces
+## Why it matters
 
-Research proposal:
-    Python implementation support
-```
+This is a strong architectural precedent for asking whether implementation
+support is also a release-level fact.
 
-## Metadata transport
+## What it does not prove
 
-PEP 794 should not be treated as evidence that metadata is automatically
-available without downloading artifacts.
+PEP 794 does not prove that implementation support belongs in Core Metadata.
 
-For pre-download metadata access, the more directly relevant mechanisms are:
+It demonstrates that Core Metadata can contain standardized facts whose
+meaning is broader than a single artifact.
 
-- PEP 658;
-- PEP 714;
-- the Simple Repository API.
+Current conclusion:
 
-These specifications define how repositories can expose Core Metadata
-separately from distributions.
-
-## Current conclusion
-
-PEP 794 provides useful structural prior art for standardized project-level
-Core Metadata.
-
-It does not establish that implementation compatibility belongs in Core
-Metadata, nor does it solve the pre-build implementation compatibility
-problem by itself.
+> PEP 794 supports the feasibility of release-level Core Metadata, not the
+> necessity of a new implementation-support field.

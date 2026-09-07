@@ -1,112 +1,123 @@
-# Requirements vs Supported Implementations
+# Requirement vs Supported Implementation
 
-A central design question is whether the metadata should express a
-**requirement** or a **support declaration**.
+The original proposal used the name `Requires-Implementation`.
 
-## Model A: requirement
+The empirical cases now make the semantic choice more important.
 
-Example:
+## Requirement
 
 ```text
 Requires-Implementation: cpython
 ```
 
-Possible interpretation:
+Possible meaning:
 
-> This release requires CPython and cannot be used with other
-> implementations.
+> This release cannot be used with implementations other than CPython.
 
-### Advantages
-
-- Direct installer-facing semantics.
-- Easy to understand.
-- Similar in spirit to `Requires-Python`.
-
-### Risks
-
-The statement may be interpreted as an exhaustive incompatibility claim.
-
-If an implementation that was previously unsupported becomes compatible,
-older releases could contain metadata that is technically too restrictive.
-
-For example:
+This is analogous to:
 
 ```text
-Release 1.0:
-    Requires-Implementation: cpython
-
-Later:
-    PyPy becomes fully compatible
+Requires-Python: >=3.10
 ```
 
-The old release would still claim that CPython is required.
+### Problem
 
-## Model B: support declaration
+A technical impossibility claim is stronger than a support-policy claim.
 
-Example:
+A project may say:
 
 ```text
-Supported-Implementation: ["cpython"]
+CPython only
 ```
 
-Possible interpretation:
+because it has only tested CPython.
 
-> The maintainer explicitly supports CPython for this release.
+That does not prove PyPy is technically incapable of running it.
 
-The absence of PyPy does not necessarily claim that PyPy is technically
-incapable of running the software.
+---
 
-### Advantages
-
-- More conservative.
-- Better aligned with maintainer support policy.
-- Less likely to make stale negative claims.
-- Can naturally represent multiple explicitly supported implementations.
-
-### Risks
-
-If the field is not normative, installers may not know what to do with it.
-
-If the field is normative, the distinction between "not listed" and
-"unsupported" must be specified.
-
-## Model C: informational classifier
-
-Use existing or extended classifiers.
-
-Example:
+## Support declaration
 
 ```text
-Programming Language :: Python :: Implementation :: CPython
+Supported-Implementation: cpython
 ```
 
-### Advantages
+Possible meaning:
 
-- Existing mechanism.
-- Already widely understood.
-- No new Core Metadata semantic category.
+> The producer explicitly supports this release on CPython.
 
-### Risks
+This better matches the strongest evidence cases.
 
-- Classifiers are primarily descriptive.
-- Candidate selection semantics are not defined.
-- A classifier does not clearly distinguish "supported" from "project
-  classification".
+It also avoids turning every omitted implementation into a claim of technical
+incompatibility.
 
-## Comparison
+### But normative semantics are still required
 
-| Model | Installer semantics | Staleness risk | Existing mechanism |
-|---|---|---:|---|
-| `Requires-Implementation` | Strong | Higher | No |
-| `Supported-Implementation` | Configurable | Lower | No |
-| Trove classifier | Weak/descriptive | Low | Yes |
+A resolver needs to know:
 
-## Current research preference
+```text
+Supported-Implementation: cpython
+```
 
-The current research prefers investigating a positive support declaration
-before a negative requirement.
+means what?
 
-That is a design preference, not a conclusion.
+Possible definitions:
 
-The final choice should depend on what semantics ecosystem stakeholders
-actually need.
+### Definition A — exhaustive
+
+Only listed implementations are supported.
+
+Then:
+
+```text
+PyPy
+```
+
+is a rejection.
+
+### Definition B — positive guarantee
+
+The listed implementations are explicitly supported, but unlisted
+implementations remain unknown.
+
+Then:
+
+```text
+PyPy
+```
+
+is not automatically rejected.
+
+Definition B is safer but provides less candidate filtering.
+
+---
+
+## What the empirical cases suggest
+
+For RestrictedPython, HAX, Likepy and similar releases, the producer is making
+a stronger statement than “we tested CPython”.
+
+The documentation explicitly says other implementations are unsupported.
+
+Those cases could justify exhaustive semantics.
+
+But the standard should not assume every implementation classifier or support
+declaration is equivalent to that strong claim.
+
+---
+
+## Recommended research direction
+
+Do not finalize the field name yet.
+
+First determine:
+
+1. whether consumers need rejection semantics;
+2. whether support declarations are intended to be exhaustive;
+3. whether omission means unknown;
+4. how implementation identity is matched;
+5. how forks are handled;
+6. how support declarations interact with ABI features;
+7. whether a future classifier could provide the same semantics.
+
+Only then should a field name be frozen.

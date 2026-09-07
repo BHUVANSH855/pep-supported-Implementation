@@ -1,44 +1,28 @@
-# Requires-Python Prior Art
+# `Requires-Python` Prior Art
 
-## Purpose
+**Current specification:** Core Metadata 2.6
+**Source:** https://packaging.python.org/en/latest/specifications/core-metadata/
 
-`Requires-Python` is the existing Core Metadata mechanism for declaring the
-Python versions compatible with a distribution.
+`Requires-Python` specifies the Python versions with which a distribution is
+compatible.
 
-## Example
-
-A project can declare:
-
-```toml
-requires-python = ">=3.10"
-```
-
-which maps to:
+Example:
 
 ```text
 Requires-Python: >=3.10
 ```
+
+Installation tools may use this field when selecting project versions.
 
 ## What it solves
 
-It answers:
-
-> Which Python versions does this distribution support?
-
-This is already a standardized and installer-relevant compatibility
-dimension.
+```text
+Python language/version compatibility
+```
 
 ## What it does not solve
 
-It does not distinguish implementations.
-
-For example:
-
-```text
-Requires-Python: >=3.10
-```
-
-does not express:
+It cannot express:
 
 ```text
 CPython only
@@ -47,36 +31,22 @@ CPython only
 or:
 
 ```text
-CPython and PyPy
+CPython + PyPy
 ```
 
-## Relationship to implementation compatibility
-
-The two dimensions are independent:
+The dimensions are independent:
 
 ```text
 Python version
     Requires-Python
 
 Python implementation
-    implementation compatibility
+    separate question
 ```
 
-A package could theoretically support:
+A package can support CPython 3.10+ but not PyPy 3.10.
 
-```text
-CPython 3.10+
-```
+Current conclusion:
 
-while not supporting:
-
-```text
-PyPy 3.10
-```
-
-despite both satisfying the same Python version constraint.
-
-## Current conclusion
-
-`Requires-Python` solves Python-version compatibility but leaves Python
-implementation identity as a separate dimension.
+> `Requires-Python` is an important existing analogue, but it does not
+> provide implementation identity/support semantics.

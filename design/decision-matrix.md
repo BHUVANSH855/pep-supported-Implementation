@@ -1,241 +1,334 @@
-# Design Decision Matrix
+# Decision Matrix
 
-This document records the current design hypothesis. It is not a proposed
-standard.
+The research is comparing several possible ways to represent or act on
+Python implementation support.
 
-## Candidate field
+## Evaluation criteria
 
-Current working name:
+| Criterion | Meaning |
+|---|---|
+| Semantic fit | Does the mechanism describe the actual fact? |
+| Release-level | Can it describe a project version rather than one artifact? |
+| Sdist applicability | Can it help before building source? |
+| Resolver utility | Can an installer use it for candidate selection? |
+| Existing adoption | Can current metadata be reused? |
+| Backwards compatibility | Can existing packages continue unchanged? |
+| False-positive risk | Can tooling safely distinguish support from implementation-specific code? |
+| Publisher burden | How difficult is it to maintain? |
+| Ecosystem breadth | Useful to pip/uv/downstreams/indexes/etc.? |
+| Layer separation | Does it avoid conflating ABI, artifact, build, and support semantics? |
 
-```text
-Supported-Implementation
-```
+---
 
-Proposed `pyproject.toml` spelling:
+## Candidate 1 — existing Trove classifiers
 
-```toml
-supported-implementation = ["cpython", "pypy"]
-```
-
-The final name is unresolved.
-
-## Semantic model
-
-The current hypothesis is a **positive support declaration**.
-
-For example:
-
-```toml
-supported-implementation = ["cpython", "pypy"]
-```
-
-means that the project explicitly supports those Python implementations.
-
-It does not necessarily mean that every implementation not listed is
-technically incapable of running the software.
-
-This distinction is important for avoiding stale negative compatibility
-claims.
-
-## Value vocabulary
-
-Values would use the implementation identity represented by:
-
-```python
-sys.implementation.name
-```
-
-This follows the implementation identity model established by PEP 421.
-
-The field should not create a second incompatible naming system.
-
-## Version constraints
-
-Implementation versions are currently out of scope.
-
-For example, this research does not currently propose:
-
-```toml
-supported-implementation = [
-    "cpython >= 3.12"
-]
-```
-
-Python version compatibility already has:
-
-```toml
-requires-python = ">=3.12"
-```
-
-Combining implementation identity and implementation version constraints
-requires additional design work.
-
-## ABI features
-
-ABI characteristics are also out of scope.
-
-Examples include:
-
-- free-threaded vs GIL-enabled CPython;
-- debug builds;
-- pointer width;
-- other ABI-level characteristics.
-
-PEP 780 is relevant prior art for these dimensions.
-
-A future implementation-support mechanism should compose with ABI feature
-metadata rather than duplicate it.
-
-## Absence of the field
-
-Current preferred interpretation:
-
-> If the field is absent, the project makes no standardized implementation
-> compatibility claim.
-
-This avoids treating older packages as incompatible merely because they were
-published before the field existed.
-
-The exact installer behavior remains unresolved.
-
-## Empty list
-
-The meaning of:
-
-```toml
-supported-implementation = []
-```
-
-is unresolved.
-
-Possible interpretations include:
-
-- invalid metadata;
-- no supported implementations;
-- no declaration.
-
-The preferred direction is to prohibit ambiguous empty declarations rather than
-give an empty list surprising semantics.
-
-This requires a final specification decision.
-
-## Multiple values
-
-Multiple implementation values use OR semantics.
-
-For example:
-
-```toml
-supported-implementation = ["cpython", "pypy"]
-```
-
-means:
+Example:
 
 ```text
-CPython OR PyPy
+Programming Language :: Python :: Implementation :: CPython
 ```
 
-It does not mean that the project requires both implementations.
+### Strengths
 
-## Runtime vs build-time
+- already published by projects;
+- established vocabulary;
+- human-readable;
+- no new metadata field;
+- explicitly discussed as a support signal in the January 2024 thread.
 
-The field is currently being considered primarily for release/runtime
-compatibility.
+### Weaknesses
 
-Build-time implementation requirements are a separate question.
+- descriptive rather than normative;
+- no standardized candidate rejection rule;
+- absence is ambiguous;
+- existing classifier usage may not have been intended as an exhaustive
+  compatibility set.
 
-For example:
+### Verdict
+
+**Strong existing solution for signaling; unresolved for normative resolution.**
+
+---
+
+## Candidate 2 — reinterpret classifiers as hard constraints
+
+### Strengths
+
+- no new field;
+- immediately available to tools.
+
+### Problems
+
+Existing classifiers were not specified as exhaustive compatibility
+constraints.
+
+Changing their semantics could turn existing descriptive metadata into
+installation rejection rules.
+
+### Verdict
+
+**High compatibility risk.**
+
+---
+
+## Candidate 3 — `Requires-Implementation`
+
+Example:
 
 ```text
-This package runs only on CPython
+Requires-Implementation: cpython
 ```
 
-is different from:
+### Strengths
+
+- parallels `Requires-Python`;
+- direct resolver semantics;
+- easy to explain.
+
+### Problems
+
+- sounds like a technical requirement rather than support policy;
+- potentially creates stale negative claims;
+- unclear treatment of implementation forks;
+- likely to be confused with build-time implementation requirements.
+
+### Verdict
+
+**Semantically attractive but currently not preferred.**
+
+---
+
+## Candidate 4 — `Supported-Implementation`
+
+Example:
 
 ```text
-The sdist must be built using CPython
+Supported-Implementation: cpython
+Supported-Implementation: pypy
 ```
 
-The second may overlap with PEP 725 and should not automatically be encoded
-using the same field.
+### Strengths
 
-## Installer behavior
+- describes producer support rather than technical necessity;
+- naturally fits multiple implementations;
+- avoids claiming that unlisted implementations are mathematically
+  impossible;
+- matches the strongest empirical interpretation of the residual cases.
 
-Current research hypothesis:
+### Problems
 
-- missing field: no implementation compatibility decision;
-- field present and implementation listed: compatible according to the
-  declaration;
-- field present and implementation absent: tooling may warn or avoid the
-  candidate, but hard rejection is not currently assumed.
+- if normative, tools still need to define what omission means;
+- if a project forgets to update it, a valid installation may be rejected;
+- support is a stronger concept than mere importability;
+- needs a precise relationship to implementation identity.
 
-Whether this should be:
+### Verdict
 
-- informational;
-- warning-producing;
-- candidate-filtering;
-- or mandatory rejection
+**Best semantic candidate so far, but not yet justified as a standard.**
 
-remains open.
+---
 
-## Wheel interaction
+## Candidate 5 — wheel tags / PEP 425
 
-Wheel tags remain authoritative for wheel artifact compatibility.
+### Strengths
 
-The proposed field would describe the release/project rather than replacing
-wheel tags.
+- mature;
+- precise for built artifacts;
+- already resolver-relevant.
 
-For example, a project could declare:
+### Weakness
 
-```toml
-supported-implementation = ["cpython"]
+It describes the artifact.
+
+The residual cases demonstrate that:
+
+```text
+py3-none-any
 ```
 
-while publishing several CPython-specific wheels with different platform
-and ABI tags.
+can coexist with:
 
-The metadata declaration does not replace those artifact-level tags.
+```text
+CPython only
+```
 
-## Sdist interaction
+at the producer-support level.
 
-This is the strongest motivation for investigating the field.
+### Verdict
 
-A source distribution can contain static Core Metadata under PEP 643.
+**Keep as artifact-level mechanism; not a complete replacement.**
 
-If implementation support were represented in Core Metadata, a metadata
-consumer could potentially inspect that declaration without executing the
-package's build process.
+---
 
-The practical benefit depends on the metadata being available to the
-consumer. PEP 658 and PEP 714 provide mechanisms for repositories to serve
-Core Metadata separately, but this metadata serving is not universally
-guaranteed.
+## Candidate 6 — PEP 825 wheel variants
 
-## Core Metadata location
+### Strengths
 
-Core Metadata is a plausible location because it already describes
-distribution-level facts and is carried by both wheels and conforming source
-distributions.
+- richer artifact compatibility;
+- index-level variant information;
+- resolver-oriented.
 
-PEP 621 would also need to define the corresponding `[project]` field if the
-metadata became a standardized `pyproject.toml` project field.
+### Weakness
 
-This would require a subsequent standards change rather than an arbitrary new
-key in `[project]`.
+PEP 825 is about wheel variants, not a general declaration that a release
+supports or does not support an implementation.
 
-## Decision summary
+It should not be used to force release policy into artifact metadata.
 
-| Question | Current position | Confidence |
-|---|---|---|
-| Is implementation identity already represented elsewhere? | Yes | High |
-| Do wheel tags solve built-wheel compatibility? | Yes | High |
-| Do dependency markers solve conditional dependencies? | Yes | High |
-| Do classifiers provide implementation information? | Yes | High |
-| Is there a dedicated normative release-level implementation field? | No | High |
-| Is there evidence of implementation-specific packages? | Yes | High |
-| Is an sdist pre-build compatibility gap demonstrated? | Yes, in specific cases | Medium/High |
-| Is a new Core Metadata field definitely required? | Not established | Low |
-| Is `Supported-Implementation` the final name? | No | Low |
-| Should unsupported implementations be rejected? | Unresolved | Low |
-| Should build-time implementation requirements use the same field? | Unresolved | Low |
-| Are ABI features covered by implementation identity? | No | High |
+### Verdict
+
+**Complementary, not a direct replacement.**
+
+---
+
+## Candidate 7 — PEP 508 markers
+
+### Strengths
+
+- implementation identity is already available;
+- conditional dependencies are well established.
+
+### Weakness
+
+A dependency marker answers:
+
+```text
+When is dependency X required?
+```
+
+It does not answer:
+
+```text
+Is distribution X itself supported?
+```
+
+There is no normal `Requires-Dist` entry that means “reject this distribution
+when its own marker is false”.
+
+### Verdict
+
+**Necessary environment machinery, not a release-support declaration.**
+
+---
+
+## Candidate 8 — PEP 780 ABI features
+
+### Strengths
+
+- handles free-threading and other ABI dimensions;
+- prevents implementation name from becoming an overloaded compatibility
+  language.
+
+### Weakness
+
+It describes the environment/ABI and dependency applicability, not producer
+support policy.
+
+### Verdict
+
+**Complementary and an important scope boundary.**
+
+---
+
+## Candidate 9 — PEP 725 external dependency metadata
+
+### Strengths
+
+- addresses build/host/runtime dependency information;
+- explicitly distinguishes build machine and host machine;
+- relevant to source-build failures.
+
+### Weakness
+
+It does not currently define Python implementations as the release-support
+vocabulary under investigation.
+
+It also separates build dependencies from runtime dependencies, which is
+exactly why a build-time CPython requirement should not automatically become a
+runtime support declaration.
+
+### Verdict
+
+**Important alternative/complement; not currently equivalent.**
+
+---
+
+## Candidate 10 — source-build policy
+
+Example concept:
+
+```text
+Do not automatically build this sdist.
+```
+
+### Strengths
+
+- directly targets expensive/failing source builds;
+- potentially avoids the immediate operational failure.
+
+### Weakness
+
+It answers:
+
+```text
+Should an installer build this source?
+```
+
+rather than:
+
+```text
+Which Python implementations does the producer support?
+```
+
+For a `py3-none-any` wheel, source-build avoidance may not solve a runtime
+compatibility mismatch at all.
+
+### Verdict
+
+**Adjacent problem, not equivalent semantics.**
+
+---
+
+## Candidate 11 — no new standard
+
+### Strengths
+
+- zero new metadata burden;
+- avoids premature standardization;
+- lets tooling combine classifiers, wheel tags and documentation.
+
+### Weakness
+
+The strongest residual cases remain awkward:
+
+```text
+py3-none-any
++
+CPython-only producer policy
+```
+
+There is no standardized normative release-level statement.
+
+### Verdict
+
+**Still a credible final outcome. The research must be willing to choose it.**
+
+---
+
+## Current matrix
+
+| Solution | Semantic fit | Sdist | Resolver | Existing | False-positive risk |
+|---|---:|---:|---:|---:|---:|
+| Trove classifier | High | Medium | Low | High | Low |
+| Reinterpreted classifier | Medium | Medium | High | High | High |
+| Requires-Implementation | High | High | High | Low | Medium |
+| Supported-Implementation | High | High | High | Low | Medium |
+| Wheel tags | High for artifact | Low | High | High | Low |
+| PEP 825 variants | High for artifact | Low | High | Emerging | Medium |
+| PEP 508 | High for deps | Medium | High for deps | High | Low |
+| PEP 780 | High for ABI | Medium | High for ABI/deps | Emerging | Low |
+| PEP 725 | High for build/external deps | High | Emerging | Emerging | Medium |
+| Source-build policy | Medium | High | High | Low | Medium |
+| No new standard | Medium | Medium | Medium | High | Lowest |
+
+This matrix is a research instrument, not a recommendation.

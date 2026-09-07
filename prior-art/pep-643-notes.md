@@ -1,35 +1,34 @@
-# PEP 643 — Metadata for Package Source Distributions
+# PEP 643 Notes — Metadata for Package Source Distributions
 
 **URL:** https://peps.python.org/pep-0643/
 **Status:** Final
-**Relevance:** Medium — establishes that sdist metadata can be trusted
-for static fields
+**Relevance:** High
 
-## What it does
+PEP 643 establishes static Core Metadata semantics for source distributions.
 
-Standardises reliable Core Metadata in source distributions by
-introducing the `Dynamic` field. A field listed as Dynamic may
-differ from what the final built distribution declares. A field
-NOT listed as Dynamic must have the same value in the sdist as
-in any wheel built from it.
+A field that is not marked dynamic must have consistent metadata between the
+sdist and wheels built from that source.
 
-## Why it matters for this proposal
+## Why this matters
 
-PEP 643 makes the following architectural claim credible:
+A release-level field such as a hypothetical:
 
-> Static Core Metadata fields in an sdist can be trusted by
-> consumers without executing the build system.
+```text
+Supported-Implementation: cpython
+```
 
-This is the foundation for using an sdist's Core Metadata to make
-pre-build compatibility decisions.
+could therefore be treated as release metadata rather than build-result
+metadata.
 
-Without PEP 643, requiring sdist metadata to be authoritative would
-be architecturally unsound. With it, a static Requires-Implementation
-field in an sdist would be a valid, trustworthy signal.
+That makes pre-build inspection technically plausible.
 
-## Implication
+## What PEP 643 does not prove
 
-If Requires-Implementation is added to Core Metadata, it should be
-a non-Dynamic field — meaning it must have the same value in the
-sdist as in any wheel built from it. This is consistent with how
-Requires-Python works today.
+It does not prove that implementation support belongs in Core Metadata.
+
+It only establishes that static release metadata in sdists can be defined
+with consistency requirements.
+
+## Current conclusion
+
+PEP 643 is enabling infrastructure, not evidence of necessity.

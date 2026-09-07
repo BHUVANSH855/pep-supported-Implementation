@@ -28,11 +28,15 @@ The research has deliberately moved to a broader and more neutral question:
 
 If the answer is yes, a second question follows:
 
-> **Where should that declaration live, what should its semantics be, and
-> should installers use it during candidate selection?**
+> **Where should that declaration live, what should its semantics be, and should
+> installers or other consumers use it during candidate selection?**
 
 The repository therefore investigates the **problem first** and the field
 design second.
+
+The project is explicitly willing to conclude:
+
+> **No new metadata field is needed.**
 
 ---
 
@@ -43,49 +47,99 @@ Python compatibility information.
 
 ```text
 PROJECT / RELEASE SUPPORT
+
     "Which Python implementations does the producer support?"
+
     ← research question
 
+
 ARTIFACT COMPATIBILITY
+
     "Can this particular built artifact run here?"
-    ← wheel compatibility tags
+
+    ← wheel compatibility tags / variants
+
 
 ENVIRONMENT
+
     "Which implementation / ABI / platform does this environment provide?"
-    ← sys.implementation / PEP 508 / ABI metadata
+
+    ← sys.implementation / environment markers / ABI information
+
 
 BUILD REQUIREMENTS
+
     "What environment is required to build this source?"
+
     ← PEP 517 / PEP 725 and related mechanisms
 ```
 
 These are related but **not equivalent statements**.
 
-The strongest recurring empirical pattern found so far is:
+A major result of the investigation is that the following concepts must remain
+separate:
+
+```text
+requirement
+artifact compatibility
+producer support
+observed compatibility
+support policy
+evidence
+```
+
+The distinction is important because:
+
+```text
+observed restriction
+        ≠
+root cause
+        ≠
+metadata gap
+        ≠
+need for a new standard
+```
+
+---
+
+# The strongest empirical pattern
+
+The current corpus contains releases with patterns such as:
 
 ```text
 producer:
+
     CPython only
 
 release:
+
     sdist available
 
 wheel:
+
     py3-... implementation-generic Python tag
 
 Requires-Python:
+
     version constraint only
 
 classifier:
+
     CPython implementation classifier
 
-normative release-level implementation constraint:
+normative release-level implementation support:
+
     absent
 ```
 
 This is a genuine packaging phenomenon.
 
-It is **not yet proof that a new Core Metadata field is necessary**.
+However:
+
+> **It is not yet proof that a new Core Metadata field is necessary.**
+
+The research now requires each candidate to survive root-cause and
+consumer-benefit analysis before being promoted to strong residual evidence.
 
 ---
 
@@ -110,7 +164,7 @@ mechanisms.
 
 Therefore the proposal should **never** be described as:
 
-> "Python packaging has no implementation metadata."
+> “Python packaging has no implementation metadata.”
 
 It clearly does.
 
@@ -119,10 +173,10 @@ producer-declared release support**.
 
 ---
 
-# Four concepts that must not be conflated
+# Four compatibility concepts
 
-A major result of the investigation is that the following concepts are
-different:
+A major result of the investigation is that these concepts should not be
+conflated.
 
 ## Requirement
 
@@ -146,7 +200,7 @@ cp313-cp313-manylinux_2_28_x86_64
 
 ## Producer support
 
-What the maintainer is willing to support for a release.
+What the maintainer explicitly supports for a release.
 
 Example:
 
@@ -169,7 +223,71 @@ documentation
 actual tests
 ```
 
-These should not be collapsed into one metadata mechanism.
+A support declaration is therefore not automatically a technical requirement,
+and a technical restriction is not automatically a reason for a new metadata
+field.
+
+---
+
+# Root-cause analysis
+
+A statement such as:
+
+```text
+CPython only
+```
+
+does not by itself explain why.
+
+The repository classifies implementation restrictions using the following
+taxonomy:
+
+| Class | Root cause                                  |
+| ----- | ------------------------------------------- |
+| A     | Runtime semantic restriction                |
+| B     | Build/toolchain restriction                 |
+| C     | Alternative-implementation bug/workaround   |
+| D     | ABI/configuration restriction               |
+| E     | Private implementation usage                |
+| F     | Explicit support-policy declaration         |
+| G     | Conditional/fallback implementation support |
+| H     | Dependency/component restriction            |
+
+This distinction is essential.
+
+For example:
+
+```text
+package fails to build on PyPy
+```
+
+could result from:
+
+```text
+alternative interpreter bug
+```
+
+rather than:
+
+```text
+package intentionally supports CPython only
+```
+
+Similarly:
+
+```text
+package uses sys.implementation
+```
+
+does not automatically mean:
+
+```text
+package is CPython-only
+```
+
+The full methodology is documented in:
+
+`evidence/root-cause-taxonomy.md`
 
 ---
 
@@ -187,33 +305,28 @@ contains implementation information in its compatibility tags.
 
 An implementation that cannot use that wheel can reject it before installation.
 
-An implementation-generic wheel such as:
-
-```text
-foo-1.0-py3-none-any.whl
-```
-
-does not make the same implementation-specific claim.
-
-The difficult case is an sdist:
+The difficult case is:
 
 ```text
 foo-1.0.tar.gz
 ```
 
-When an installer has no compatible wheel, it may consider the source
+When no compatible wheel exists, an installer may consider the source
 distribution and build a wheel locally.
 
-The research question is therefore:
+The central research question is therefore:
 
-> **Can an installer know from standardized release metadata that the source
-> distribution is not supported by the current Python implementation before
-> starting the build?**
+> **Can a consumer know from standardized release metadata that an sdist is not
+> supported by the current Python implementation before starting the build?**
 
 At present, there is no dedicated release-level implementation constraint
-equivalent to the implementation component of wheel tags.
+directly analogous to the implementation component of wheel compatibility
+tags.
 
-That is the clearest unresolved gap identified by this research.
+That is the clearest unresolved gap identified so far.
+
+But the existence of this gap does not establish that a new field is the
+correct solution.
 
 ---
 
@@ -249,6 +362,9 @@ Python implementation compatibility
 
 are separate dimensions.
 
+This does not mean `Requires-Python` should be extended to encode arbitrary
+implementation logic.
+
 ---
 
 # What PEP 508 markers do not solve
@@ -274,8 +390,8 @@ It does not directly answer:
 > Is this distribution itself a valid candidate for the current
 > implementation?
 
-Therefore PEP 508 is important infrastructure for this research, but it is
-not currently equivalent to a release-support declaration.
+Therefore PEP 508 is important infrastructure for this research, but is not
+currently equivalent to a release-support declaration.
 
 ---
 
@@ -293,7 +409,7 @@ can communicate that a particular wheel is built for CPython.
 
 This is excellent for **built artifact selection**.
 
-However, a release can simultaneously contain:
+However, a release can contain:
 
 ```text
 foo-1.0-py3-none-any.whl
@@ -311,318 +427,315 @@ This creates the central distinction:
 ```text
 artifact compatibility
         ≠
-producer support policy
+producer support
 ```
 
 The research is therefore not proposing to replace wheel tags.
 
 ---
 
-# Strong empirical cases
+# Real-world evidence
 
-The current corpus contains several useful cases.
+The repository deliberately separates broad real-world observations from
+surviving residual cases.
 
-These are evidence, not proof that a new standard is necessary.
+## Broad evidence
+
+`evidence/real-world-cases.md` records:
+
+* implementation-specific packages;
+* adaptive/fallback packages;
+* classifiers;
+* build-avoidance discussions;
+* tooling use cases;
+* dependency/component restrictions;
+* alternative mechanisms;
+* counterexamples.
+
+These establish that implementation compatibility is a real ecosystem concern.
+
+## Residual evidence
+
+`evidence/residual-cases.md` applies stricter filtering.
+
+A case should become a strong residual case only if the research can establish:
+
+```text
+explicit producer support boundary
+        ↓
+concrete release
+        ↓
+release-level candidate
+        ↓
+existing artifact metadata insufficient
+        ↓
+Requires-Python insufficient
+        ↓
+PEP 508 insufficient for self-support
+        ↓
+ABI mechanisms insufficient
+        ↓
+root cause understood
+        ↓
+alternative explanations eliminated
+        ↓
+meaningful consumer decision exists
+        ↓
+new metadata provides incremental value
+```
+
+This prevents the repository from counting every “CPython only” statement as
+evidence for a new standard.
 
 ---
 
-## RestrictedPython 8.5
+# Current candidate cases
 
-PyPI publishes:
+The current corpus includes releases such as:
+
+* RestrictedPython 8.5;
+* HAX 0.3.0;
+* Likepy 0.3.0;
+* simple-ctx-log 0.0.3;
+* TribeCore 4.7.3.
+
+These cases demonstrate the general phenomenon but are not all equally strong.
+
+The current strongest candidate is **HAX 0.3.0**, because its CPython
+restriction is explicitly enforced at runtime while the published wheel is
+implementation-generic.
+
+Other cases require additional root-cause and consumer-benefit validation.
+
+Control cases include projects such as:
+
+* psutil;
+* Autobahn;
+* Guppy3;
+* bocpy.
+
+These are important because they demonstrate that:
 
 ```text
-restrictedpython-8.5.tar.gz
-restrictedpython-8.5-py3-none-any.whl
+implementation-specific code
+        ≠
+implementation unsupported
 ```
 
-and the release metadata includes:
+and:
 
 ```text
-Programming Language :: Python :: Implementation :: CPython
+CPython-specific dependency
+        ≠
+CPython-only top-level release
 ```
 
-The project explicitly states that RestrictedPython supports CPython and does
-not support PyPy or other Python implementations.
+---
 
-This is an especially useful case because:
+# Requirement vs support
+
+The original proposal was:
 
 ```text
-wheel:
-    py3-none-any
-
-producer support:
-    CPython only
+Requires-Implementation: cpython
 ```
 
-The case demonstrates a real difference between artifact tagging and producer
-support.
+This sounds like a hard technical requirement.
 
-### Important limitation
-
-This example does **not** prove that a new Core Metadata field is the correct
-solution.
-
-It could instead indicate that the published wheel is too broadly tagged.
-
-The research must therefore treat it as:
+A potentially different concept is:
 
 ```text
-evidence of a support/artifact mismatch
+Supported-Implementation: cpython
+```
+
+which sounds like a producer support declaration.
+
+The distinction is:
+
+```text
+Requires-Implementation
+    ↓
+environment must satisfy this condition
+
+Supported-Implementation
+    ↓
+producer explicitly supports this implementation
+```
+
+The current research considers positive support semantics more promising than
+turning implementation identity directly into a hard requirement.
+
+However:
+
+> **`Supported-Implementation` is a hypothesis, not a recommendation.**
+
+The repository will not freeze the field name until the underlying problem and
+consumer semantics are established.
+
+---
+
+# The central semantic problem
+
+Suppose a release declares:
+
+```text
+Supported-Implementation: cpython
+```
+
+What does that mean for PyPy?
+
+There are several possibilities.
+
+### Exhaustive semantics
+
+Only listed implementations are supported.
+
+```text
+CPython → supported
+PyPy    → unsupported
+```
+
+This provides strong candidate filtering but turns omission into a negative
+claim.
+
+### Positive semantics
+
+Listed implementations are explicitly supported.
+
+```text
+CPython → explicitly supported
+PyPy    → unknown
+```
+
+This is safer but provides weaker candidate filtering.
+
+The repository currently considers the positive interpretation the safer
+hypothesis.
+
+This remains unresolved.
+
+---
+
+# What absence should mean
+
+The research currently prefers:
+
+```text
+field absent
+    =
+no normative implementation-support declaration
 ```
 
 rather than:
 
 ```text
-proof that Requires-Implementation is required
+field absent
+    =
+all implementations supported
 ```
+
+or:
+
+```text
+field absent
+    =
+all unlisted implementations unsupported
+```
+
+This is important for backwards compatibility.
+
+Existing distributions should not acquire a new compatibility meaning merely
+because they predate a future metadata field.
 
 ---
 
-## HAX 0.3.0
+# Important non-inferences
 
-HAX publishes:
+The research explicitly rejects several tempting inference rules.
 
-```text
-hax-0.3.0.tar.gz
-hax-0.3.0-py3-none-any.whl
-```
-
-and explicitly describes support in CPython terms.
-
-Its source contains an implementation check equivalent to:
-
-```python
-if implementation.name != "cpython":
-    raise RuntimeError("HAX only supports CPython!")
-```
-
-This is particularly valuable because the restriction is not merely a
-classifier or documentation statement.
-
-There is:
+## No PyPy wheel
 
 ```text
-documentation
-+
-published artifact
-+
-source-level enforcement
+No PyPy wheel
+    ≠
+PyPy unsupported
 ```
 
-The case therefore demonstrates a genuine implementation-specific semantic
-restriction that is not represented by `Requires-Python`.
+A project may support PyPy from source without publishing a dedicated wheel.
 
----
-
-## Likepy 0.3.0
-
-PyPI publishes:
+## CPython classifier
 
 ```text
-likepy-0.3.0.tar.gz
-likepy-0.3.0-py3-none-any.whl
+CPython classifier
+    ≠
+all other implementations unsupported
 ```
 
-with a CPython implementation classifier and a description stating that only
-CPython is supported.
+A classifier is descriptive unless a future specification gives it stronger
+semantics.
 
-This independently reproduces the same general pattern:
+## `sys.implementation` usage
 
 ```text
-implementation-specific producer support
-+
-implementation-generic Python wheel
-+
-sdist
+sys.implementation usage
+    ≠
+CPython-only package
 ```
 
-It is useful because it is independent of the RestrictedPython example.
+The code may have fallbacks or conditional behavior.
 
----
-
-## simple-ctx-log 0.0.3
-
-This 2026 release publishes:
+## Native extension
 
 ```text
-simple_ctx_log-0.0.3.tar.gz
-simple_ctx_log-0.0.3-py3-none-any.whl
+native extension
+    ≠
+new implementation metadata required
 ```
 
-and documents use of:
+Wheel tags or ABI metadata may already represent the relevant compatibility.
 
-```text
-sys._getframe
-```
-
-as a CPython-only feature.
-
-This is useful as a recent independent example of:
-
-```text
-pure Python
-+
-implementation-specific semantics
-+
-py3-none-any
-+
-sdist
-```
-
-The repository should remain conservative here: published documentation is
-strong evidence, but this case should not be described as source-enforced
-unless independent source evidence confirms that.
-
----
-
-## TribeCore 4.7.3
-
-This 2026 release explicitly states:
-
-```text
-CPython only.
-PyPy and other Python implementations are not supported.
-```
-
-It publishes an sdist and wheels with Python tags of the form:
-
-```text
-py3-none-<platform>
-```
-
-The project explains that the generic Python tag allows the same wheel to work
-across Python 3.x versions for the target platform.
-
-This is valuable because the phenomenon is not limited to:
-
-```text
-py3-none-any
-```
-
-It can also occur with platform-specific wheels whose **Python implementation
-tag remains generic**.
-
-### Caveat
-
-TribeCore includes bundled/native components, so its build and artifact layers
-need separate analysis before treating it as a clean pure-Python residual case.
-
----
-
-# Cases that must NOT be overinterpreted
-
-Some projects are valuable precisely because they show where inference fails.
-
-## psutil
-
-Implementation-specific build logic does not automatically imply
-implementation-specific support.
-
-A project can have CPython-specific paths while supporting multiple Python
-implementations.
-
-Therefore:
-
-```text
-implementation-specific source code
-```
-
-does not imply:
-
-```text
-implementation unsupported
-```
-
----
-
-## Autobahn
-
-A project can support multiple Python implementations while some optional or
-native dependencies have narrower implementation support.
-
-Therefore:
+## CPython-only dependency
 
 ```text
 CPython-only dependency
-```
-
-does not imply:
-
-```text
+    ≠
 CPython-only release
 ```
 
-Implementation support cannot safely be inferred transitively.
+The parent project may provide a fallback or conditional dependency path.
 
 ---
 
-## Guppy3
+# Alternatives under investigation
 
-Guppy3 is an excellent implementation/ABI case.
+A new Core Metadata field is only one candidate.
 
-Its CPython-specific wheels already encode substantial artifact-level
-compatibility information.
+The repository currently compares:
 
-Therefore it is especially useful for studying:
+1. existing descriptive classifiers;
+2. normative classifier semantics;
+3. `Requires-Implementation`;
+4. `Supported-Implementation`;
+5. wheel tags;
+6. PEP 825 wheel variants;
+7. PEP 508 markers;
+8. PEP 780 ABI features;
+9. PEP 725 external/build/host dependencies;
+10. source-build policy;
+11. failed-build caching;
+12. no new standard.
 
-```text
-implementation identity
-+
-ABI
-+
-Python version
-+
-wheel compatibility
-+
-source builds
-```
-
-but it is a weaker example for demonstrating a residual **release-level**
-metadata gap.
-
----
-
-# The strongest counterargument
-
-The strongest counterargument is not:
-
-> "implementation compatibility doesn't exist."
-
-It clearly does.
-
-The strongest counterargument is:
-
-> **The existing ecosystem may already contain enough information for the
-> practical cases, and the remaining cases may not justify a new normative
-> metadata field.**
-
-Possible existing solutions include:
-
-* correcting incorrectly tagged wheels;
-* improving classifiers;
-* improving installer diagnostics;
-* using source-build policy;
-* extending PEP 725;
-* improving index metadata;
-* richer wheel variants;
-* doing nothing until a larger corpus demonstrates demand.
-
-The research must test these alternatives fairly.
+Each mechanism is evaluated against the actual residual problem rather than
+against an abstract proposal.
 
 ---
 
 # PEP 725 is a first-class alternative
 
-PEP 725 must not be treated as a footnote.
+PEP 725 is directly relevant whenever an apparent implementation restriction
+is actually a build or host requirement.
 
-It addresses external dependencies and distinguishes build, host, and runtime
-requirements.
-
-That makes it directly relevant to the question:
-
-> Is the real problem actually a build-environment requirement?
-
-However, the following statements are not necessarily equivalent:
+These statements must not be conflated:
 
 ```text
 The package must be built under CPython.
@@ -634,7 +747,7 @@ and:
 The resulting release only supports CPython.
 ```
 
-For example, a project might:
+For example:
 
 ```text
 build under CPython
@@ -644,408 +757,88 @@ produce py3-none-any
 run on PyPy
 ```
 
+is possible in principle.
+
 Therefore:
 
 ```text
 build implementation
-```
-
-must not automatically become:
-
-```text
+        ≠
 runtime implementation
 ```
 
-The research must determine whether PEP 725 can represent the actual residual
-cases without conflating these layers.
+The research must test PEP 725 against concrete residual cases rather than
+arguing against it abstractly.
 
 ---
 
-# The central design question
+# Failed-build caching is also relevant
 
-If a new field is eventually justified, its semantics need to be chosen
-carefully.
-
-The original proposal was:
+Tooling can cache failed build results:
 
 ```text
-Requires-Implementation: cpython
+first attempt
+    ↓
+build fails
+    ↓
+cache result
+    ↓
+avoid repeating equivalent work
 ```
 
-But this terminology may be misleading.
+This can address some performance-oriented source-build problems.
 
-It sounds like:
-
-```text
-technical requirement
-```
-
-rather than:
+However:
 
 ```text
+cached failure
+    ≠
 producer support declaration
 ```
 
-A potentially more accurate concept is:
+A cache records an observed result in an environment.
 
-```text
-Supported-Implementation: cpython
-```
+Support metadata would represent a producer declaration about a release.
 
-or an equivalent release-support mechanism.
-
-This is not a recommendation yet.
-
-It is a hypothesis that needs ecosystem validation.
+The research therefore treats caching as a legitimate alternative for some
+operational problems, but not as a semantic replacement for support metadata.
 
 ---
 
-# Why positive support may be preferable
+# Core Metadata vs other layers
 
-Compare:
+If the underlying problem survives existing mechanisms, the next question is
+where the information belongs.
 
-```text
-Requires-Implementation: cpython
-```
-
-with:
+Possible locations include:
 
 ```text
-Supported-Implementation: cpython
+Core Metadata
+index/repository metadata
+wheel metadata/tags
+wheel variants
+build metadata
+project documentation
+tool-specific configuration
 ```
 
-The first naturally suggests:
-
-```text
-anything else is impossible
-```
-
-The second can mean:
-
-```text
-this is an implementation the producer explicitly supports
-```
-
-That distinction matters because alternative implementations can gain support
-over time.
-
-A package that says:
-
-```text
-CPython only
-```
-
-today might support PyPy next year.
-
-A positive support declaration can therefore be less semantically dangerous
-than a permanent negative compatibility claim.
-
-However, this immediately raises another question:
-
-> What does omission mean?
-
-The repository does not currently assume that omission means unsupported.
-
-For backwards compatibility, the safest interpretation may be:
-
-```text
-field absent
-    =
-no normative support declaration
-```
-
-rather than:
-
-```text
-field absent
-    =
-all other implementations unsupported
-```
-
----
-
-# Support must not be inferred
-
-The research deliberately rejects several tempting inference rules.
-
-## No PyPy wheel
-
-Does not prove:
-
-```text
-PyPy unsupported
-```
-
-A project may support PyPy from source without publishing a dedicated wheel.
-
-## CPython classifier
-
-Does not prove:
-
-```text
-all other implementations unsupported
-```
-
-A classifier is not necessarily an exhaustive compatibility set.
-
-## `sys.implementation` usage
-
-Does not prove:
-
-```text
-CPython only
-```
-
-The code may have a fallback.
-
-## Native extension
-
-Does not automatically justify new metadata.
-
-Wheel tags may already solve the relevant artifact-selection problem.
-
-## CPython-only dependency
-
-Does not automatically make the parent package CPython-only.
-
-The parent may provide an alternative implementation path.
-
----
-
-# Candidate solutions
-
-The research currently compares these possibilities.
-
-## 1. Keep classifiers descriptive
-
-```text
-Programming Language :: Python :: Implementation :: CPython
-```
-
-Pros:
-
-* no new metadata;
-* existing vocabulary;
-* already widely understood.
-
-Cons:
-
-* no normative installer behavior;
-* absence is ambiguous;
-* not necessarily exhaustive.
-
----
-
-## 2. Give classifiers normative semantics
-
-Pros:
-
-* no new field.
-
-Cons:
-
-* changes the meaning of existing metadata;
-* old projects may suddenly become incompatible;
-* classifier absence was not designed as a hard compatibility assertion.
-
-This has significant backwards-compatibility risk.
-
----
-
-## 3. `Requires-Implementation`
-
-```text
-Requires-Implementation: cpython
-```
-
-Pros:
-
-* familiar requirement-style model;
-* easy to explain;
-* potentially useful for candidate selection.
-
-Cons:
-
-* conflates support with technical requirement;
-* can become stale;
-* unclear interaction with build requirements;
-* needs precise semantics for implementation forks and variants.
-
----
-
-## 4. `Supported-Implementation`
-
-```text
-Supported-Implementation: cpython
-Supported-Implementation: pypy
-```
-
-Pros:
-
-* describes producer support;
-* supports multiple implementations;
-* avoids saying unlisted implementations are impossible.
-
-Cons:
-
-* still requires normative semantics;
-* omission must be defined;
-* incorrect declarations could cause false negatives;
-* "support" itself needs a precise definition.
-
-This is currently the **most semantically attractive hypothesis**, not an
-established recommendation.
-
----
-
-## 5. Wheel tags
-
-Keep using wheel tags for artifact compatibility.
-
-This is unquestionably valuable and should not be replaced.
-
----
-
-## 6. PEP 825 / wheel variants
-
-Potentially useful for richer artifact compatibility.
-
-Not obviously a replacement for a release-level support declaration.
-
----
-
-## 7. PEP 508 markers
-
-Excellent for conditional dependencies.
-
-Not currently a mechanism for saying:
-
-```text
-reject this distribution itself
-```
-
----
-
-## 8. PEP 780
-
-Useful for ABI feature compatibility.
-
-It should remain separate from implementation support.
-
----
-
-## 9. PEP 725
-
-Important for build/host/external dependency semantics.
-
-Requires deeper investigation before deciding whether it can subsume the
-residual problem.
-
----
-
-## 10. Source-build policy
-
-A mechanism such as:
-
-```text
-do not automatically build this sdist
-```
-
-could solve some operational failures.
-
-But it answers:
-
-```text
-should the installer build this source?
-```
-
-rather than:
-
-```text
-which implementations does this release support?
-```
-
-These are related but different questions.
-
----
-
-## 11. No new standard
-
-This remains a completely valid outcome.
-
-If existing mechanisms plus tooling improvements solve the meaningful cases,
-standardization should stop.
-
----
-
-# Current evidence matrix
-
-| Mechanism                  |         Release support |       Sdist |  Resolver use | Existing adoption | Main problem                  |
-| -------------------------- | ----------------------: | ----------: | ------------: | ----------------: | ----------------------------- |
-| Trove classifiers          |      Yes, descriptively |         Yes |           Low |              High | Not normative                 |
-| Reinterpreted classifiers  |             Potentially |         Yes |          High |              High | Backwards compatibility       |
-| `Requires-Implementation`  |                     Yes |         Yes |          High |              None | Requirement/support ambiguity |
-| `Supported-Implementation` |                     Yes |         Yes |          High |              None | Definition of support         |
-| Wheel tags                 |           Artifact only |          No |          High |              High | Not release-level             |
-| PEP 825                    |        Artifact/variant |     Limited |          High |          Emerging | Not support policy            |
-| PEP 508                    |            Dependencies |     Partial | High for deps |              High | Not self-compatibility        |
-| PEP 780                    |                     ABI |     Partial |  High for ABI |          Emerging | Different dimension           |
-| PEP 725                    | Build/host/runtime deps | Potentially |      Emerging |          Emerging | Not currently release support |
-| Source-build policy        |             Operational |         Yes |   Potentially |               Low | Does not describe support     |
-| No new standard            |         Existing layers |     Partial |       Partial |           Highest | Residual cases remain         |
-
-This matrix is a research instrument, not a final recommendation.
-
----
-
-# Evidence standard
-
-The repository distinguishes three things:
-
-### Direct evidence
-
-Examples:
-
-* normative packaging specifications;
-* published PyPI metadata;
-* published filenames;
-* project documentation;
-* source-level compatibility checks;
-* actual standards discussions.
-
-### Interpretation
-
-A reasoned mapping from those facts to the research question.
-
-### Hypothesis
-
-A proposed mechanism that still needs validation.
-
-For example:
-
-```text
-No PyPy wheel
-```
-
-must not become:
-
-```text
-PyPy unsupported
-```
-
-without additional evidence.
-
-Likewise:
-
-```text
-sys.implementation.name is inspected
-```
-
-must not automatically become:
-
-```text
-package is CPython-only
-```
+Core Metadata is attractive because a release-level support declaration could
+travel with the distribution.
+
+But adding Core Metadata has costs:
+
+* specification complexity;
+* build-backend support;
+* metadata validation;
+* installer behavior;
+* repository behavior;
+* documentation;
+* maintenance;
+* stale declarations;
+* ecosystem adoption.
+
+The repository therefore treats Core Metadata as a **candidate**, not a
+premise.
 
 ---
 
@@ -1053,15 +846,16 @@ package is CPython-only
 
 The research should conclude against a new field if evidence shows that:
 
-1. existing classifiers can safely acquire the necessary semantics;
-2. wheel/index metadata already provides the required release-level information;
-3. PEP 725 can represent the meaningful residual cases without semantic
-   conflation;
-4. a source-build policy solves the actual user-facing problem;
-5. the remaining cases are rare or operationally insignificant;
-6. consumers do not need the information before building/installing;
-7. the field cannot define "support" precisely enough for automated use;
-8. the maintenance cost exceeds the resolver/tooling benefit.
+1. existing classifiers provide sufficient information for meaningful consumers;
+2. wheel/index metadata already provides the required information;
+3. PEP 725 adequately represents the meaningful build cases;
+4. source-build policy solves the actual operational problem;
+5. failed-build caching provides most of the claimed practical benefit;
+6. the remaining cases are rare or operationally insignificant;
+7. consumers do not need the information before building/installing;
+8. producer declarations cannot be defined precisely enough for automation;
+9. stale declarations create unacceptable false negatives;
+10. ecosystem maintenance costs exceed the consumer benefit.
 
 A negative conclusion is a successful research result.
 
@@ -1069,45 +863,175 @@ A negative conclusion is a successful research result.
 
 # What would strengthen the proposal?
 
-The proposal becomes substantially stronger if we can demonstrate all of the
-following:
+The proposal becomes substantially stronger if investigation demonstrates:
 
 ```text
 1. A concrete class of releases is genuinely implementation-restricted.
 
-2. The restriction is producer-declared or otherwise directly evidenced.
+2. The restriction is producer-declared or directly evidenced.
 
-3. The release has an sdist.
+3. The release has an sdist or equivalent release-level candidate.
 
-4. Existing Requires-Python cannot express it.
+4. Existing Requires-Python cannot express the restriction.
 
-5. PEP 508 markers cannot express the package's own restriction.
+5. PEP 508 cannot express the distribution's own restriction.
 
-6. Wheel tags cannot help because no compatible wheel exists yet.
+6. Wheel tags cannot solve the problem because the relevant artifact does not
+   yet exist.
 
-7. The installer therefore has to consider/build the sdist.
+7. The root cause is not merely ABI, build tooling, dependency structure,
+   private implementation usage, or an alternative-interpreter bug.
 
-8. The installer could have rejected the candidate earlier if a normative
-   release-level declaration existed.
+8. The consumer therefore faces a meaningful pre-install/build decision.
 
-9. PEP 725 and other existing proposals cannot express the same semantic fact
-   cleanly.
+9. Existing mechanisms cannot adequately express the required information.
 
-10. Real users/tools would benefit from acting on that information.
+10. A machine-readable release-level declaration materially improves that
+    decision.
+
+11. The benefit is large enough to justify specification and ecosystem costs.
 ```
 
 That is the evidence threshold the research should aim for.
 
 ---
 
-# Next research phase
+# Research methodology
 
-The repository should now move from example collection to **adversarial
-validation**.
+The repository follows:
 
-## Phase 1 — Freeze the corpus
+```text
+evidence
+    ↓
+root-cause classification
+    ↓
+existing-mechanism analysis
+    ↓
+residual-case validation
+    ↓
+consumer decision
+    ↓
+design hypothesis
+    ↓
+standardization decision
+```
 
-For every candidate release record:
+It deliberately avoids:
+
+```text
+hypothesis
+    ↓
+selective examples
+    ↓
+conclusion
+```
+
+The methodology is documented in:
+
+* `evidence/methodology.md`
+* `evidence/root-cause-taxonomy.md`
+* `evidence/real-world-cases.md`
+* `evidence/residual-cases.md`
+
+---
+
+# Research architecture
+
+The repository separates the investigation into layers.
+
+```text
+prior-art/
+    ↓
+What existing specifications already provide
+
+evidence/real-world-cases.md
+    ↓
+What exists in the ecosystem
+
+evidence/root-cause-taxonomy.md
+    ↓
+Why those restrictions exist
+
+evidence/residual-cases.md
+    ↓
+Which cases survive adversarial filtering
+
+evidence/methodology.md
+    ↓
+How evidence is evaluated
+
+design/requirements-vs-supported.md
+    ↓
+What the possible semantics actually mean
+
+design/decision-matrix.md
+    ↓
+Which mechanisms can solve the surviving problem
+
+design/open-questions.md
+    ↓
+What remains unresolved
+
+research-status.md
+    ↓
+Current overall conclusion
+```
+
+This separation is intentional.
+
+---
+
+# Current research status
+
+The current position is:
+
+```text
+Problem exists?
+    → likely yes
+
+Semantic mismatch demonstrated?
+    → yes
+
+Strong residual cases?
+    → at least one promising case; broader validation ongoing
+
+Root causes fully classified?
+    → no
+
+Existing mechanisms fully eliminated?
+    → no
+
+Consumer demand demonstrated?
+    → not yet sufficiently
+
+New Core Metadata field justified?
+    → not established
+
+Requires-Implementation preferred?
+    → no
+
+Supported-Implementation preferred?
+    → promising hypothesis, not established
+
+No-new-standard outcome?
+    → fully viable
+```
+
+The research confidence is therefore deliberately asymmetric:
+
+> There is substantial evidence for a **real semantic distinction**, but much
+> less evidence that the distinction requires a **new normative Core Metadata
+> field**.
+
+---
+
+# Immediate next research phase
+
+The next phase is **adversarial validation**, not proposal drafting.
+
+## 1. Freeze the strongest cases
+
+For each candidate release record:
 
 ```text
 project
@@ -1115,17 +1039,16 @@ version
 release date
 Requires-Python
 classifiers
-sdist filename
+sdist
 wheel filenames
 implementation statement
 source/runtime evidence
 dependency markers
 ABI evidence
+root cause
 ```
 
----
-
-## Phase 2 — Separate the compatibility layers
+## 2. Separate compatibility layers
 
 For every case determine independently:
 
@@ -1140,18 +1063,16 @@ artifact compatibility
 producer support policy
 ```
 
-Do not use one as a proxy for another.
+Do not use one dimension as a proxy for another.
 
----
-
-## Phase 3 — Test actual candidate selection
+## 3. Test actual candidate selection
 
 The key experiment is:
 
 ```text
 current implementation
         ↓
-pip / resolver
+resolver
         ↓
 candidate selection
         ↓
@@ -1164,34 +1085,24 @@ failure or success
 
 The important question is:
 
-> **At what point could the installer have known that the release was not
+> **At what point could the consumer have known that the release was not
 > supported?**
 
----
+## 4. Test PEP 725 concretely
 
-## Phase 4 — Test PEP 725 explicitly
-
-For every strong residual case ask:
+For every strong candidate ask:
 
 ```text
 Can PEP 725 express the actual requirement?
 
 If yes:
-    Does it describe build compatibility only?
+    Is it only a build/host requirement?
 
 If no:
     What exact semantic information is missing?
 ```
 
-Do not argue against PEP 725 abstractly.
-
-Demonstrate the mismatch with concrete cases.
-
----
-
-## Phase 5 — Identify consumers
-
-A metadata field has value only if somebody can act on it.
+## 5. Identify actual consumers
 
 Potential consumers include:
 
@@ -1201,68 +1112,43 @@ Potential consumers include:
 * package indexes;
 * dependency resolvers;
 * build frontends;
-* vulnerability/scanning tools;
+* compatibility test systems;
+* fuzzing infrastructure;
 * environment managers;
 * IDEs and package browsers.
 
-The research should establish which of these actually need the information.
+The research should establish which consumers actually need the information.
 
 ---
 
-# Current conclusion
+# Primary resources
 
-The research has reached a useful intermediate conclusion:
+The repository tracks and analyzes:
 
-> **Python packaging already has strong artifact-level implementation
-> compatibility through wheel tags and environment-level implementation
-> information through `sys.implementation` and PEP 508. The unresolved area
-> is producer-declared release-level implementation support, particularly when
-> an installer is considering an sdist before a compatible wheel exists.**
+* Python Packaging specifications;
+* Core Metadata;
+* Source Distribution specifications;
+* wheel compatibility specifications;
+* PEP 421 — `sys.implementation`;
+* PEP 425 — Compatibility Tags for Built Distributions;
+* PEP 508 — Dependency Specification;
+* PEP 621 — Project Metadata;
+* PEP 625 — Source Distribution File Name;
+* PEP 643 — Metadata 2.2;
+* PEP 658 / PEP 714 — Core Metadata through the Simple API;
+* PEP 725 — External Dependencies;
+* PEP 780 — ABI Feature Environment Markers;
+* PEP 825 — Wheel Variants;
+* Trove classifiers;
+* Python.org Packaging discussions;
+* PyPI release metadata and artifacts;
+* Python implementation compatibility documentation.
 
-That is a much narrower and more defensible statement than:
-
-> "Python needs `Requires-Implementation`."
-
-The repository should therefore remain **pre-PEP and design-neutral** until the
-remaining empirical questions are answered.
-
-The next objective is not to prove a field is necessary.
-
-It is to determine whether a **real residual problem remains after accounting
-for wheel tags, classifiers, PEP 508, PEP 725, ABI metadata, wheel variants,
-and source-build policy**.
-
-If that residual problem is real, common, and actionable, then a new standard
-may be justified.
-
-If not, the correct result is to document why existing mechanisms are enough.
+See `SOURCES.md` for the maintained source inventory.
 
 ---
 
-## Primary resources
-
-* Python Packaging User Guide specifications
-* Core Metadata specification
-* Source Distribution specification
-* Wheel/platform compatibility specifications
-* PEP 421 — `sys.implementation`
-* PEP 425 — Compatibility Tags for Built Distributions
-* PEP 508 — Dependency Specification
-* PEP 621 — Project Metadata
-* PEP 625 — Source Distribution File Name
-* PEP 643 — Metadata 2.2
-* PEP 658 / PEP 714 — Core Metadata through the Simple API
-* PEP 725 — External Dependencies
-* PEP 780 — ABI Feature Environment Markers
-* PEP 825 — Wheel Variants
-* Trove classifiers
-* Python.org Packaging discussions
-* PyPI release metadata and artifacts
-* PyPy compatibility documentation
-
----
-
-## Repository discipline
+# Repository discipline
 
 This repository should continue to prefer:
 
@@ -1282,6 +1168,32 @@ hypothesis
 selective examples
     ↓
 conclusion
+```
+
+In particular:
+
+```text
+No PyPy wheel
+    ≠
+PyPy unsupported
+```
+
+```text
+CPython classifier
+    ≠
+formal incompatibility declaration
+```
+
+```text
+sys.implementation check
+    ≠
+proof that a new metadata field is required
+```
+
+```text
+build failure
+    ≠
+release-level implementation requirement
 ```
 
 The goal is a standards-quality empirical investigation that remains useful

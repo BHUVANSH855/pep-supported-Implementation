@@ -1,22 +1,25 @@
 # Decision Matrix
 
-The research is comparing several possible ways to represent or act on
-Python implementation support.
+The research compares possible ways to represent or act on Python
+implementation support.
+
+The matrix is intentionally conservative: a mechanism receives a high score
+only for the layer it actually describes.
 
 ## Evaluation criteria
 
-| Criterion | Meaning |
-|---|---|
-| Semantic fit | Does the mechanism describe the actual fact? |
-| Release-level | Can it describe a project version rather than one artifact? |
-| Sdist applicability | Can it help before building source? |
-| Resolver utility | Can an installer use it for candidate selection? |
-| Existing adoption | Can current metadata be reused? |
-| Backwards compatibility | Can existing packages continue unchanged? |
-| False-positive risk | Can tooling safely distinguish support from implementation-specific code? |
-| Publisher burden | How difficult is it to maintain? |
-| Ecosystem breadth | Useful to pip/uv/downstreams/indexes/etc.? |
-| Layer separation | Does it avoid conflating ABI, artifact, build, and support semantics? |
+| Criterion               | Meaning                                                                   |
+| ----------------------- | ------------------------------------------------------------------------- |
+| Semantic fit            | Does the mechanism describe the actual fact?                              |
+| Release-level           | Can it describe a project version rather than one artifact?               |
+| Sdist applicability     | Can it help before building source?                                       |
+| Resolver utility        | Can an installer use it for candidate selection?                          |
+| Existing adoption       | Can current metadata be reused?                                           |
+| Backwards compatibility | Can existing packages continue unchanged?                                 |
+| False-positive risk     | Can tooling safely distinguish support from implementation-specific code? |
+| Publisher burden        | How difficult is it to maintain?                                          |
+| Ecosystem breadth       | Useful to pip/uv/downstreams/indexes/etc.?                                |
+| Layer separation        | Does it avoid conflating ABI, artifact, build, and support semantics?     |
 
 ---
 
@@ -30,23 +33,32 @@ Programming Language :: Python :: Implementation :: CPython
 
 ### Strengths
 
-- already published by projects;
-- established vocabulary;
-- human-readable;
-- no new metadata field;
-- explicitly discussed as a support signal in the January 2024 thread.
+* already published by projects;
+* established vocabulary;
+* human-readable;
+* no new metadata field;
+* can communicate positive support information.
 
 ### Weaknesses
 
-- descriptive rather than normative;
-- no standardized candidate rejection rule;
-- absence is ambiguous;
-- existing classifier usage may not have been intended as an exhaustive
-  compatibility set.
+* current semantics are descriptive;
+* no standardized candidate rejection rule;
+* absence is ambiguous;
+* existing classifier usage may not have been intended as an exhaustive
+  compatibility set;
+* changing semantics could affect old metadata.
+
+### Research question
+
+Can the classifier safely be interpreted as:
+
+> The publisher explicitly supports this implementation.
+
+without interpreting absence as unsupported?
 
 ### Verdict
 
-**Strong existing solution for signaling; unresolved for normative resolution.**
+**Most important existing alternative. Unresolved.**
 
 ---
 
@@ -54,20 +66,23 @@ Programming Language :: Python :: Implementation :: CPython
 
 ### Strengths
 
-- no new field;
-- immediately available to tools.
+* no new field;
+* immediately available to tools.
 
 ### Problems
 
 Existing classifiers were not specified as exhaustive compatibility
 constraints.
 
-Changing their semantics could turn existing descriptive metadata into
-installation rejection rules.
+Changing their semantics could turn descriptive metadata into installation
+rejection rules.
 
 ### Verdict
 
 **High compatibility risk.**
+
+A positive/advisory interpretation is substantially more plausible than
+retroactively turning all classifier omissions into hard incompatibility.
 
 ---
 
@@ -81,20 +96,21 @@ Requires-Implementation: cpython
 
 ### Strengths
 
-- parallels `Requires-Python`;
-- direct resolver semantics;
-- easy to explain.
+* parallels `Requires-Python`;
+* direct resolver semantics;
+* easy to explain.
 
 ### Problems
 
-- sounds like a technical requirement rather than support policy;
-- potentially creates stale negative claims;
-- unclear treatment of implementation forks;
-- likely to be confused with build-time implementation requirements.
+* sounds like a technical requirement rather than support policy;
+* risks conflating build-time and runtime implementation requirements;
+* can create stale negative claims;
+* unclear treatment of implementation forks;
+* stronger semantics than the current evidence justifies.
 
 ### Verdict
 
-**Semantically attractive but currently not preferred.**
+**Currently not the preferred design.**
 
 ---
 
@@ -109,22 +125,22 @@ Supported-Implementation: pypy
 
 ### Strengths
 
-- describes producer support rather than technical necessity;
-- naturally fits multiple implementations;
-- avoids claiming that unlisted implementations are mathematically
-  impossible;
-- matches the strongest empirical interpretation of the residual cases.
+* describes producer support rather than technical necessity;
+* naturally fits multiple implementations;
+* positive support semantics are less aggressive than negative exclusion;
+* could help describe releases before an sdist build.
 
 ### Problems
 
-- if normative, tools still need to define what omission means;
-- if a project forgets to update it, a valid installation may be rejected;
-- support is a stronger concept than mere importability;
-- needs a precise relationship to implementation identity.
+* still requires a precise definition of "supported";
+* omission semantics must be explicit;
+* publisher adoption may be poor;
+* incorrect declarations can affect resolution;
+* does not solve build/ABI/private-API questions automatically.
 
 ### Verdict
 
-**Best semantic candidate so far, but not yet justified as a standard.**
+**Strong semantic hypothesis, but not yet justified as a standard.**
 
 ---
 
@@ -132,31 +148,26 @@ Supported-Implementation: pypy
 
 ### Strengths
 
-- mature;
-- precise for built artifacts;
-- already resolver-relevant.
+* mature;
+* precise for built artifacts;
+* already resolver-relevant.
 
 ### Weakness
 
-It describes the artifact.
+It describes the artifact, not necessarily the producer's release-wide support
+policy.
 
-The residual cases demonstrate that:
+A release can contain:
 
 ```text
 py3-none-any
++
+CPython-only producer statement
 ```
-
-can coexist with:
-
-```text
-CPython only
-```
-
-at the producer-support level.
 
 ### Verdict
 
-**Keep as artifact-level mechanism; not a complete replacement.**
+**Keep as the artifact-level mechanism; not a complete replacement.**
 
 ---
 
@@ -164,16 +175,14 @@ at the producer-support level.
 
 ### Strengths
 
-- richer artifact compatibility;
-- index-level variant information;
-- resolver-oriented.
+* richer artifact compatibility;
+* index-level variant information;
+* resolver-oriented.
 
 ### Weakness
 
 PEP 825 is about wheel variants, not a general declaration that a release
-supports or does not support an implementation.
-
-It should not be used to force release policy into artifact metadata.
+supports an implementation.
 
 ### Verdict
 
@@ -185,8 +194,8 @@ It should not be used to force release policy into artifact metadata.
 
 ### Strengths
 
-- implementation identity is already available;
-- conditional dependencies are well established.
+* implementation identity is already available;
+* conditional dependencies are well established.
 
 ### Weakness
 
@@ -196,14 +205,11 @@ A dependency marker answers:
 When is dependency X required?
 ```
 
-It does not answer:
+It does not directly answer:
 
 ```text
 Is distribution X itself supported?
 ```
-
-There is no normal `Requires-Dist` entry that means “reject this distribution
-when its own marker is false”.
 
 ### Verdict
 
@@ -215,14 +221,13 @@ when its own marker is false”.
 
 ### Strengths
 
-- handles free-threading and other ABI dimensions;
-- prevents implementation name from becoming an overloaded compatibility
+* handles free-threading and other ABI dimensions;
+* prevents implementation name from becoming an overloaded compatibility
   language.
 
 ### Weakness
 
-It describes the environment/ABI and dependency applicability, not producer
-support policy.
+It describes ABI/environment dimensions rather than producer support policy.
 
 ### Verdict
 
@@ -234,37 +239,30 @@ support policy.
 
 ### Strengths
 
-- addresses build/host/runtime dependency information;
-- explicitly distinguishes build machine and host machine;
-- relevant to source-build failures.
+* addresses build/host/runtime external dependency information;
+* explicitly distinguishes build machine and host machine;
+* directly relevant to source-build restrictions.
 
 ### Weakness
 
-It does not currently define Python implementations as the release-support
-vocabulary under investigation.
+A build requirement is not automatically a runtime support declaration.
 
-It also separates build dependencies from runtime dependencies, which is
-exactly why a build-time CPython requirement should not automatically become a
-runtime support declaration.
+The research must therefore classify a candidate as build-only before using it as
+evidence for release-level implementation support.
 
 ### Verdict
 
-**Important alternative/complement; not currently equivalent.**
+**First-class alternative for build cases; not currently equivalent to
+release support metadata.**
 
 ---
 
 ## Candidate 10 — source-build policy
 
-Example concept:
-
-```text
-Do not automatically build this sdist.
-```
-
 ### Strengths
 
-- directly targets expensive/failing source builds;
-- potentially avoids the immediate operational failure.
+* directly targets expensive/failing source builds;
+* may avoid an immediate operational failure.
 
 ### Weakness
 
@@ -280,34 +278,74 @@ rather than:
 Which Python implementations does the producer support?
 ```
 
-For a `py3-none-any` wheel, source-build avoidance may not solve a runtime
-compatibility mismatch at all.
-
 ### Verdict
 
 **Adjacent problem, not equivalent semantics.**
 
 ---
 
-## Candidate 11 — no new standard
+## Candidate 11 — failed-build caching
 
 ### Strengths
 
-- zero new metadata burden;
-- avoids premature standardization;
-- lets tooling combine classifiers, wheel tags and documentation.
+* requires no new package metadata;
+* can prevent repeated expensive failures;
+* directly addresses the operational problem of repeated source builds;
+* imposes no publisher adoption requirement.
 
 ### Weakness
 
-The strongest residual cases remain awkward:
+A cached failure:
+
+* is discovered only after a build attempt;
+* is environment-specific;
+* may become stale when implementations or packages are fixed;
+* does not communicate producer support intent;
+* may not transfer between machines or environments;
+* does not help a first-time resolver avoid the initial build.
+
+### Critical comparison
+
+The research must test whether:
 
 ```text
-py3-none-any
-+
-CPython-only producer policy
+failed-build cache
 ```
 
-There is no standardized normative release-level statement.
+provides enough practical benefit that a standardized declaration is unnecessary.
+
+The metadata proposal must demonstrate a concrete advantage such as:
+
+```text
+first-time avoidance
++
+cross-environment knowledge
++
+producer-declared support intent
++
+candidate selection before build
+```
+
+rather than merely arguing that caching is imperfect.
+
+### Verdict
+
+**Serious competing operational solution. Must be experimentally compared.**
+
+---
+
+## Candidate 12 — no new standard
+
+### Strengths
+
+* zero new metadata burden;
+* avoids premature standardization;
+* lets tooling combine existing mechanisms.
+
+### Weakness
+
+The strongest residual candidates remain awkward if no existing mechanism can
+make the support fact machine-actionable before source build.
 
 ### Verdict
 
@@ -317,18 +355,54 @@ There is no standardized normative release-level statement.
 
 ## Current matrix
 
-| Solution | Semantic fit | Sdist | Resolver | Existing | False-positive risk |
-|---|---:|---:|---:|---:|---:|
-| Trove classifier | High | Medium | Low | High | Low |
-| Reinterpreted classifier | Medium | Medium | High | High | High |
-| Requires-Implementation | High | High | High | Low | Medium |
-| Supported-Implementation | High | High | High | Low | Medium |
-| Wheel tags | High for artifact | Low | High | High | Low |
-| PEP 825 variants | High for artifact | Low | High | Emerging | Medium |
-| PEP 508 | High for deps | Medium | High for deps | High | Low |
-| PEP 780 | High for ABI | Medium | High for ABI/deps | Emerging | Low |
-| PEP 725 | High for build/external deps | High | Emerging | Emerging | Medium |
-| Source-build policy | Medium | High | High | Low | Medium |
-| No new standard | Medium | Medium | Medium | High | Lowest |
+| Solution                 |                 Semantic fit |              Sdist |          Resolver | Existing | False-positive risk | Current posture                |
+| ------------------------ | ---------------------------: | -----------------: | ----------------: | -------: | ------------------: | ------------------------------ |
+| Trove classifier         |                         High |             Medium |       Low/unknown |     High |          Low/Medium | **investigate first**          |
+| Reinterpreted classifier |                       Medium |             Medium |              High |     High |                High | risky                          |
+| Requires-Implementation  |                         High |               High |              High |      Low |              Medium | not preferred                  |
+| Supported-Implementation |                         High |               High |              High |      Low |              Medium | **hypothesis**                 |
+| Wheel tags               |            High for artifact |                Low |              High |     High |                 Low | established                    |
+| PEP 825 variants         |            High for artifact |                Low |              High | Emerging |              Medium | complementary                  |
+| PEP 508                  |                High for deps |             Medium |     High for deps |     High |                 Low | complementary                  |
+| PEP 780                  |                 High for ABI |             Medium | High for ABI/deps | Emerging |                 Low | complementary                  |
+| PEP 725                  | High for build/external deps |               High |          Emerging | Emerging |              Medium | **test first for build cases** |
+| Source-build policy      |                       Medium |               High |              High |      Low |              Medium | adjacent                       |
+| Failed-build cache       |            Low for semantics | High operationally |            Medium |     High |                 Low | **serious alternative**        |
+| No new standard          |                       Medium |             Medium |            Medium |     High |              Lowest | **credible outcome**           |
+
+---
+
+## Decision gate
+
+A new release-level field should not be recommended merely because it is
+semantically elegant.
+
+The research should recommend a new standard only if:
+
+```text
+real residual cases
++
+root cause belongs in package support metadata
++
+classifiers are insufficient
++
+PEP 725/build metadata are insufficient for build cases
++
+failed-build caching is materially insufficient
++
+pre-install candidate selection changes
++
+consumer benefit is measurable
++
+publisher burden is credible
++
+semantics can be stated precisely
+```
+
+Otherwise the result should be:
+
+```text
+no new standard
+```
 
 This matrix is a research instrument, not a recommendation.

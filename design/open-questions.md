@@ -1,16 +1,12 @@
 # Open Questions
 
-This document deliberately records questions that the research has not
-resolved.
+This document deliberately records questions that the research has not resolved.
 
-The questions are ordered from the underlying problem to the possible metadata
-design. This is intentional: the research should establish that a
-standardization problem survives existing mechanisms **before** optimizing the
-syntax or semantics of a proposed field.
+The questions are ordered from the underlying problem to the possible metadata design. This is intentional: the research should establish that a standardization problem survives existing mechanisms **before** optimizing the syntax or semantics of a proposed field.
 
 The central distinction throughout this document is:
 
-```text id="k0f1da"
+```text
 observed implementation restriction
         ≠
 root cause of restriction
@@ -24,42 +20,46 @@ need for a new standard
 
 ## 1. Does a genuine release-level support problem remain?
 
-The research has identified releases where:
+The research has identified real releases where a producer explicitly limits support to CPython while publishing artifacts whose compatibility metadata is more generic than that support boundary.
 
-```text id="bq1j9x"
+Examples now include cases such as:
+
+```text
 producer:
-
     CPython only
 
 artifact:
-
-    py3-...
+    py3-none-any
 
 sdist:
-
     present
 
 Requires-Python:
-
-    version restriction only
+    Python-version restriction only
 
 classifier:
-
-    descriptive implementation information
+    implementation information, but not a normative compatibility constraint
 ```
 
-This establishes a semantic mismatch worth investigating.
+The strongest evidence includes runtime guards and explicit support statements. For example, HAX 0.3.0 contains an explicit CPython-only runtime check, while simple-ctx-log documents CPython-only behavior associated with `sys._getframe`.
 
-The unresolved question is whether this mismatch produces a sufficiently
-important **consumer decision problem** that existing mechanisms cannot solve.
+This establishes that the pattern exists.
+
+It does **not** establish that the pattern creates a sufficiently important packaging problem.
+
+The unresolved question is:
+
+> Is there a meaningful consumer decision that could be made before installation or source build if release-level implementation support were represented machine-readably?
 
 In particular:
 
-> Is there a meaningful decision that a consumer could make before
-> installation/build if release-level implementation support were represented
-> machine-readably?
+* Would a resolver choose a different release?
+* Would an installer avoid an otherwise apparently compatible sdist?
+* Would a build system avoid an expected failure?
+* Would a compatibility-testing system gain materially better information?
+* Would ecosystem analysis become substantially more accurate?
 
-This is the most important question in the research.
+This remains the most important question in the research.
 
 ---
 
@@ -67,7 +67,7 @@ This is the most important question in the research.
 
 A statement such as:
 
-```text id="fjh6yq"
+```text
 CPython only
 ```
 
@@ -86,7 +86,7 @@ The restriction may arise from:
 
 The current taxonomy is:
 
-```text id="n7nj3q"
+```text
 A — runtime semantic restriction
 B — build/toolchain restriction
 C — alternative-implementation bug/workaround
@@ -99,10 +99,11 @@ H — dependency/component restriction
 
 The unresolved question is:
 
-> Which of these categories actually produces the residual problem that
-> existing packaging metadata cannot represent?
+> Which categories actually produce a residual packaging problem that existing metadata cannot represent?
 
-This is why `evidence/root-cause-taxonomy.md` precedes the final proposal.
+A release should not be counted merely because its documentation says "CPython only."
+
+The research must establish why the restriction exists and whether that reason belongs in packaging metadata at all.
 
 ---
 
@@ -110,11 +111,11 @@ This is why `evidence/root-cause-taxonomy.md` precedes the final proposal.
 
 A field such as:
 
-```toml id="5x8x4b"
+```toml
 supported-implementation = ["cpython"]
 ```
 
-could mean several different things:
+could mean:
 
 * tested by CI;
 * officially supported by maintainers;
@@ -129,7 +130,7 @@ These meanings are not equivalent.
 
 For example:
 
-```text id="w2t1qs"
+```text
 known to work on CPython
         ≠
 supported only on CPython
@@ -137,55 +138,61 @@ supported only on CPython
 
 and:
 
-```text id="cx6q7a"
+```text
 not tested on PyPy
         ≠
 known incompatible with PyPy
 ```
 
-A standard must define the intended semantics precisely if the information is
-to become machine-actionable.
+The research now includes real examples where explicit support policy is stronger than mere lack of testing, but that still does not define a universal semantic rule.
+
+The unresolved question is:
+
+> What exactly would a producer be asserting by declaring an implementation "supported"?
+
+A standard must define this precisely before the information can safely become machine-actionable.
 
 ---
 
 ## 4. Is this actually a requirement or a support declaration?
 
-This is one of the central unresolved terminology questions.
+This remains one of the central unresolved terminology questions.
 
 Consider:
 
-```text id="d9r8l2"
+```text
 Requires-Implementation: cpython
 ```
 
 This sounds like an installation requirement.
 
-But a project may instead mean:
+A project may instead mean:
 
-```text id="m2p4z7"
+```text
 Supported-Implementation: cpython
 ```
 
-which describes the producer's known/supportable implementation set.
+which describes the producer's declared support boundary.
 
 These are materially different concepts.
 
 A requirement can imply:
 
-```text id="w4c7kq"
+```text
 outside the set → candidate is invalid
 ```
 
 while support metadata could mean:
 
-```text id="a8n3ds"
+```text
 inside the set → producer declares support
-outside the set → support is not declared
+
+outside the set → producer does not declare support
 ```
 
-The research currently considers **positive support semantics** more promising
-than treating implementation identity as another hard requirement, but this is
-not yet a recommendation.
+The research currently considers **positive support semantics** more promising than treating implementation identity as another hard requirement, but this is not a recommendation.
+
+The unresolved question is whether the consumer problem actually requires either concept.
 
 ---
 
@@ -203,23 +210,25 @@ Tools may warn when the current implementation is not listed.
 
 ### Candidate-selection metadata
 
-Resolvers/installers may use the field to eliminate or deprioritize
-candidates.
+Resolvers or installers may use the field to eliminate or deprioritize candidates.
 
 ### Mandatory compatibility constraint
 
-Installers must reject a candidate when the current implementation is not
-listed.
+Installers must reject a candidate when the current implementation is not listed.
 
 The research currently does not select one of these.
 
-The strongest unresolved question is:
+A particularly important question is:
 
-> Can the metadata be useful for machine-assisted decisions without turning an
-> imperfect maintainer support declaration into a hard compatibility constraint?
+> Can implementation-support metadata provide useful machine-assisted information without turning an imperfect producer support declaration into a hard compatibility constraint?
 
-This is particularly important because implementation support declarations may
-become stale.
+The controlled classifier experiment is relevant here.
+
+A package carrying a CPython implementation classifier but otherwise generic `py3-none-any` artifact was accepted by the tested pip path, demonstrating that the existing classifier is not functioning as a generic normative candidate restriction.
+
+That establishes a distinction between **having implementation information** and **having machine-actionable compatibility semantics**.
+
+It does not establish that the latter requires a new Core Metadata field.
 
 ---
 
@@ -239,10 +248,11 @@ This is semantically conservative but may reduce usefulness.
 
 This preserves the existing meaning of distributions that predate the field.
 
-The research currently prefers **C**.
+The research currently favors **C** as the least disruptive interpretation if a field were eventually standardized.
 
-Existing distributions must not suddenly become incompatible simply because they
-do not contain a field that did not previously exist.
+Existing distributions must not suddenly become incompatible simply because they do not contain a field that did not previously exist.
+
+However, even this assumption requires validation against the intended consumer semantics.
 
 ---
 
@@ -250,11 +260,11 @@ do not contain a field that did not previously exist.
 
 Possible meanings include:
 
-```toml id="j8p3zq"
+```toml
 supported-implementation = []
 ```
 
-could mean:
+which could mean:
 
 * no implementations supported;
 * no information;
@@ -262,8 +272,7 @@ could mean:
 
 An empty declaration could easily create ambiguity.
 
-The current design hypothesis is therefore that an empty list should either be
-prohibited or given a carefully defined meaning.
+The current design hypothesis is therefore that an empty list should either be prohibited or given a carefully defined meaning.
 
 This remains unresolved.
 
@@ -275,7 +284,7 @@ Implementation support may not be binary.
 
 A project could support:
 
-```text id="t6m0kw"
+```text
 CPython
 PyPy
 ```
@@ -284,19 +293,19 @@ but only for certain Python versions.
 
 Or:
 
-```text id="h5r2jc"
+```text
 CPython
 ```
 
 while excluding:
 
-```text id="s9k1fv"
+```text
 CPython free-threaded
 ```
 
 or:
 
-```text id="q7c4xe"
+```text
 CPython debug builds
 ```
 
@@ -308,42 +317,52 @@ The implementation dimension therefore interacts with:
 * architecture;
 * build configuration.
 
-A useful representation must not imply that implementation identity alone
-fully describes compatibility.
+A useful representation must not imply that implementation identity alone fully describes compatibility.
+
+The unresolved question is:
+
+> How much implementation detail belongs in implementation-support metadata, and where should version, ABI, platform, and configuration restrictions remain represented?
 
 ---
 
 ## 9. Is implementation identity sufficient?
 
-No.
+No single implementation name can describe every compatibility dimension.
 
 A project can support:
 
-```text id="n3s6px"
+```text
 CPython
 ```
 
 but reject:
 
-```text id="e2j7kw"
+```text
 CPython free-threaded
 ```
 
 or:
 
-```text id="p4d8mv"
+```text
 CPython debug
 ```
 
-PEP 780 is relevant to these ABI/configuration dimensions.
+PEP 780 is relevant to ABI/configuration dimensions.
 
-The proposed field should therefore not become a general-purpose interpreter
-compatibility language.
+The proposed concept should therefore not become a general-purpose interpreter compatibility language.
 
 The unresolved question is:
 
-> What exact compatibility dimension would implementation-support metadata
-> own, and what dimensions must remain owned by other mechanisms?
+> What exact compatibility dimension would implementation-support metadata own, and what dimensions must remain owned by other mechanisms?
+
+This boundary is essential to prevent duplication with:
+
+* `Requires-Python`;
+* wheel tags;
+* variant metadata;
+* ABI/environment metadata;
+* dependency markers;
+* build requirements.
 
 ---
 
@@ -351,7 +370,7 @@ The unresolved question is:
 
 A future candidate-selection process could conceptually evaluate:
 
-```text id="u7v3de"
+```text
 implementation identity
 +
 Python version
@@ -360,45 +379,47 @@ ABI features
 +
 platform
 +
-wheel tags
+artifact compatibility
 ```
 
 The standards need to define which mechanism owns each dimension.
 
-For example:
+A possible conceptual boundary is:
 
-```text id="z4x8pn"
+```text
 Implementation identity
     → implementation-support metadata
 
 Python version
     → Requires-Python
 
-ABI features
+ABI/environment features
     → PEP 780 / artifact metadata
 
 Platform
-    → platform/wheel metadata
+    → platform and wheel metadata
 
 Individual artifact compatibility
     → wheel tags / variants
 ```
 
-This is currently a conceptual boundary, not a finalized architecture.
+This is only a research boundary, not a finalized architecture.
+
+The unresolved question is whether the implementation dimension is sufficiently independent to justify another normative mechanism.
 
 ---
 
 ## 11. Runtime vs build-time compatibility
 
-Consider two statements:
+Consider:
 
-```text id="0v4t2x"
+```text
 The package can only run on CPython.
 ```
 
 and:
 
-```text id="j9k5sw"
+```text
 The package's build process must execute under CPython.
 ```
 
@@ -417,8 +438,11 @@ The second may be about:
 
 They should not automatically use the same metadata semantics.
 
-PEP 725 must therefore be considered before creating a second vocabulary for
-build-environment requirements.
+PEP 725 must therefore be considered before creating a second vocabulary for build-environment requirements.
+
+The unresolved question is:
+
+> Which observed implementation-specific failures are genuinely release runtime-support boundaries, rather than build-environment requirements?
 
 ---
 
@@ -426,22 +450,19 @@ build-environment requirements.
 
 PEP 725 is relevant to external dependencies and build/host requirements.
 
-The current research question is not simply:
+The question is not:
 
-> “Can PEP 725 describe something involving CPython?”
+> Can PEP 725 describe something involving CPython?
 
-It is:
+The actual question is:
 
-> “Does PEP 725 cover the actual residual problem demonstrated by the
-> strongest implementation-support cases?”
+> Does PEP 725 cover the actual residual problem demonstrated by the strongest implementation-support cases?
 
-If the root cause is a build dependency or host requirement, PEP 725 may be
-the more appropriate mechanism.
+If the root cause is a build dependency or host requirement, PEP 725 may be the more appropriate mechanism.
 
-If the root cause is a runtime support boundary, a separate mechanism may still
-be relevant.
+If the root cause is a runtime support boundary, a separate mechanism may still be relevant.
 
-This distinction must be demonstrated case-by-case.
+Every claimed residual case should therefore be evaluated against PEP 725 explicitly rather than merely mentioning it as related prior art.
 
 ---
 
@@ -458,26 +479,29 @@ In those cases, package metadata may not be the best long-term solution.
 
 For example:
 
-```text id="x1z7qh"
+```text
 package fails on PyPy
         ↓
 PyPy compatibility bug
 ```
 
-could be better addressed by fixing PyPy rather than declaring the package
-permanently incompatible with PyPy.
+could be better addressed by fixing PyPy rather than declaring the package permanently incompatible with PyPy.
 
 The research must therefore distinguish:
 
-```text id="j7k3pd"
+```text
 package support boundary
 ```
 
 from:
 
-```text id="p9m4ax"
+```text
 temporary ecosystem compatibility gap
 ```
+
+The unresolved question is:
+
+> How much evidence is required before a compatibility failure can legitimately be treated as a producer-declared support boundary?
 
 ---
 
@@ -487,7 +511,7 @@ A package may deliberately depend on implementation-specific internals.
 
 For example:
 
-```text id="m3f6ws"
+```text
 CPython private API
         ↓
 project is intentionally CPython-specific
@@ -495,57 +519,108 @@ project is intentionally CPython-specific
 
 The producer may effectively be saying:
 
-> “This package is for CPython; other implementations are outside its intended
-> use.”
+> This package is for CPython; other implementations are outside its intended use.
 
-The unresolved question is whether such intentional private implementation
-usage should be represented as a normative installation constraint.
+The unresolved question is whether intentional private implementation usage should become a normative installation constraint.
 
-The research should not assume that every unsupported environment requires
-metadata.
+The simple-ctx-log evidence is relevant because it combines an explicit CPython-only description with use of `sys._getframe`.
+
+However, the presence of a private API does not automatically establish that a new metadata field is necessary.
+
+The research should ask:
+
+* Is the private API essential?
+* Is there a portable alternative?
+* Is the package intentionally implementation-specific?
+* Would the project actually want installers to reject alternative implementations?
+* Could existing classifiers or documentation adequately communicate the policy?
 
 ---
 
-## 15. Could Trove classifiers solve the problem?
+## 15. Could explicit security/support policy justify different treatment?
+
+Some projects are CPython-only for reasons stronger than ordinary compatibility.
+
+RestrictedPython is an important example because its documentation and source distinguish CPython support from use on other implementations in the context of its security guarantees.
+
+This raises a separate question:
+
+> Is a producer's explicit safety or security support boundary materially different from ordinary implementation compatibility?
+
+If a project says that use on another implementation could undermine a security property, informational metadata may be insufficient.
+
+But this does not automatically imply that the correct solution is an implementation requirement.
+
+The research must determine whether security-sensitive support boundaries require:
+
+* a hard constraint;
+* an advisory declaration;
+* a separate security metadata mechanism;
+* or no packaging-level mechanism.
+
+---
+
+## 16. Could Trove classifiers solve the problem?
 
 Classifiers already allow projects to say:
 
-```text id="z2q6vr"
+```text
 Programming Language :: Python :: Implementation :: CPython
 ```
 
 and:
 
-```text id="v5j1kd"
+```text
 Programming Language :: Python :: Implementation :: PyPy
 ```
 
-This demonstrates that the ecosystem already has a vocabulary for describing
-implementation targeting.
+This demonstrates that the ecosystem already has a vocabulary for implementation targeting.
 
-The unresolved question is whether classifiers are sufficient for the
-important use cases.
+The unresolved question is whether classifiers are sufficient for the important use cases.
 
-Specifically:
+The controlled experiment provides useful evidence:
 
-> Is the missing property primarily **machine actionability and defined
-> semantics**, rather than the absence of an implementation vocabulary?
+```text
+CPython classifier
++
+Requires-Python >= 3.8
++
+py3-none-any wheel
+```
 
-If classifiers already provide enough information for testing, discovery, and
-human decision-making, a new field may not be justified.
+was still selected by the tested pip resolver path under an explicitly simulated PyPy target.
 
-If consumers need a defined compatibility meaning, the distinction becomes
-more significant.
+The tested uv path similarly resolved the generic artifact, although the tested interface did not provide an explicit PyPy implementation override, so this must not be interpreted as a complete PyPy-specific uv experiment.
+
+The evidence therefore supports a narrower statement:
+
+> Existing implementation classifiers are not presently equivalent to a normative implementation compatibility constraint in the tested packaging paths.
+
+It does **not** establish:
+
+> Therefore a new Core Metadata field is necessary.
+
+The unresolved question remains whether the missing property is primarily:
+
+```text
+machine actionability + defined semantics
+```
+
+rather than:
+
+```text
+absence of an implementation vocabulary
+```
 
 ---
 
-## 16. Why would projects maintain a new field?
+## 17. Why would projects maintain a new field?
 
 Adoption is an independent problem.
 
 A new field introduces maintenance work:
 
-```text id="b8v0cz"
+```text
 project author
     ↓
 declare support
@@ -555,26 +630,25 @@ keep declaration current
 ensure it matches actual behavior
 ```
 
-The research has already identified the concern that projects do not
-consistently maintain implementation classifiers.
+The research has identified projects with explicit implementation classifiers and projects with explicit CPython-only documentation, but classifier presence is not sufficient evidence that a normative declaration would be maintained accurately.
 
-That raises a fundamental question:
+This raises a fundamental question:
 
-> Why would a project maintain a new normative field if it does not already
-> maintain descriptive implementation classifiers reliably?
+> Why would a project maintain a new normative field if it does not already maintain implementation classifiers reliably?
 
-A proposal needs a concrete consumer benefit strong enough to justify this
-additional maintenance burden.
+A proposal needs a concrete consumer benefit strong enough to justify this additional maintenance burden.
+
+The burden becomes greater if the field is used for hard candidate rejection.
 
 ---
 
-## 17. Could incorrect declarations cause more harm than they prevent?
+## 18. Could incorrect declarations cause more harm than they prevent?
 
-A machine-actionable declaration creates a new failure mode.
+A machine-actionable declaration creates new failure modes.
 
 For example:
 
-```text id="y4r8nv"
+```text
 Supported-Implementation: cpython
 ```
 
@@ -582,7 +656,7 @@ could become stale after the project gains PyPy support.
 
 Conversely:
 
-```text id="h2q6st"
+```text
 Supported-Implementation: cpython, pypy
 ```
 
@@ -600,14 +674,19 @@ Possible responses include:
 
 The research has not established which approach is appropriate.
 
+The key unresolved question is:
+
+> Is producer-declared implementation support sufficiently stable and trustworthy to justify automated candidate decisions?
+
+This question should be answered empirically where possible rather than assumed.
+
 ---
 
-## 18. Could failed-build caching solve the practical problem?
+## 19. Could failed-build caching solve the practical problem?
 
-Caching failed builds provides an alternative for some performance-oriented
-source-build scenarios:
+Caching failed builds provides an alternative for some performance-oriented source-build scenarios:
 
-```text id="q1r5vm"
+```text
 first attempt
     ↓
 build failure
@@ -617,20 +696,19 @@ cache result
 avoid repeating equivalent work
 ```
 
-This weakens the argument that a new field is automatically necessary merely
-because source builds can fail.
+This weakens the argument that a new field is automatically necessary merely because source builds can fail.
 
 However, caching is not semantically equivalent to support metadata.
 
 A cache records:
 
-```text id="v8m2cp"
+```text
 observed result in environment X
 ```
 
 while support metadata would represent:
 
-```text id="d5k7nz"
+```text
 producer declaration about release R
 ```
 
@@ -642,22 +720,21 @@ A cached failure:
 * may become stale;
 * may not transfer between environments.
 
-The unresolved question is therefore:
+The unresolved question is:
 
-> How much of the practical value claimed for implementation metadata is about
-> semantic compatibility, and how much is merely about avoiding repeated failed
-> work?
+> How much of the practical value claimed for implementation metadata is about semantic compatibility, and how much is merely about avoiding repeated failed work?
+
+If caching solves the primary practical problem, the justification for a new metadata field becomes weaker.
 
 ---
 
-## 19. Could wheel tags solve the problem?
+## 20. Could wheel tags solve the problem?
 
-For an already-built wheel, wheel tags are the established artifact-level
-mechanism.
+For an already-built wheel, wheel tags are the established artifact-level mechanism.
 
 The difficult scenario is:
 
-```text id="r8x1md"
+```text
 sdist only
     ↓
 installer must decide whether to build
@@ -665,40 +742,40 @@ installer must decide whether to build
 
 The compatible wheel does not yet exist.
 
-This is where a release-level support declaration could theoretically provide
-information before a build is attempted.
+This is where a release-level support declaration could theoretically provide information before a build is attempted.
 
 However, the research must still determine whether:
 
-* the restriction is actually encoded elsewhere;
-* build metadata is the correct solution;
-* the index can expose the information early enough;
+* the restriction is already encoded elsewhere;
+* the artifact should instead use a more specific tag;
+* the restriction is really a build requirement;
+* the source distribution should be treated differently;
+* the index could expose another form of compatibility information;
 * or the expected benefit is too small to justify new metadata.
 
-Wheel tags and release-level support metadata should therefore be treated as
-different layers rather than direct replacements.
+Wheel tags and release-level support metadata should therefore be treated as different layers rather than direct replacements.
 
 ---
 
-## 20. Should PEP 825 variants be involved?
+## 21. Should PEP 825 variants be involved?
 
 PEP 825 addresses wheel variants and index-level artifact compatibility.
 
-This may help represent cases where compatibility depends on additional
-artifact properties.
+This may help represent cases where compatibility depends on additional artifact properties.
 
-But variants remain fundamentally **artifact-level**.
+But variants remain fundamentally artifact-level.
 
-The unresolved question is whether a release can have a support boundary that
-cannot be cleanly represented by its individual artifact variants.
+The unresolved question is:
 
-If so, a release-level declaration may still have a distinct role.
+> Does a release have a producer support boundary that cannot be cleanly represented by its individual artifact variants?
 
-If not, variants may eliminate some of the apparent need for new metadata.
+If every important case can be expressed through artifact selection, variants may eliminate some of the apparent need for a release-level declaration.
+
+If an sdist remains inherently ambiguous despite complete artifact metadata, a separate release-level concept may still have a role.
 
 ---
 
-## 21. Does Core Metadata need to be extended?
+## 22. Does Core Metadata need to be extended?
 
 Core Metadata is a plausible location for release-level compatibility data.
 
@@ -711,20 +788,21 @@ But adding a field has costs:
 * repository behavior;
 * documentation;
 * backwards compatibility;
-* maintenance of the implementation vocabulary;
-* risk of stale producer declarations.
+* implementation-vocabulary maintenance;
+* stale producer declarations;
+* resolver complexity.
 
 The benefit must justify those costs.
 
 The research should therefore not begin with:
 
-```text id="k4c9vz"
+```text
 "We need a Core Metadata field."
 ```
 
 but with:
 
-```text id="x8d1qm"
+```text
 "We have a consumer problem that existing mechanisms cannot adequately solve."
 ```
 
@@ -732,18 +810,15 @@ Only then should Core Metadata become the primary design candidate.
 
 ---
 
-## 22. Could the information belong at the index/repository layer instead?
+## 23. Could the information belong at the index/repository layer instead?
 
-A release-level compatibility statement could potentially be exposed through
-repository metadata rather than embedded directly in Core Metadata.
+A release-level compatibility statement could potentially be exposed through repository metadata rather than embedded directly in Core Metadata.
 
-PEP 658 and related repository metadata mechanisms make release metadata
-available separately from artifact downloads.
+PEP 658 and related repository metadata mechanisms make release metadata available separately from artifact downloads.
 
 This raises a separate architectural question:
 
-> Does the information need to be part of the distribution's canonical Core
-> Metadata, or does the primary consumer need it at the repository/index layer?
+> Does the information need to be part of the distribution's canonical Core Metadata, or does the primary consumer need it at the repository/index layer?
 
 The answer depends partly on whether the intended consumer is:
 
@@ -754,20 +829,19 @@ The answer depends partly on whether the intended consumer is:
 * an ecosystem analysis tool;
 * or another package consumer.
 
+The information's location should follow the actual consumer workflow rather than being chosen in advance.
+
 ---
 
-## 23. How would metadata be obtained?
+## 24. How would metadata be obtained?
 
 PEP 658 and PEP 714 allow repositories to expose Core Metadata separately.
 
-However, metadata sidecars are optional.
-
-Therefore a design cannot assume that every package index will expose the field
-before an artifact is downloaded.
+However, metadata sidecars are not guaranteed to be available for every distribution or repository.
 
 Possible acquisition paths include:
 
-```text id="e6v1pn"
+```text
 index metadata
     ↓
 Core Metadata
@@ -777,14 +851,15 @@ artifact metadata
 source distribution
 ```
 
-The research must determine whether the desired consumer decision can actually
-be made at the point where the information becomes available.
+The research must determine whether the desired consumer decision can actually be made at the point where the information becomes available.
+
+A theoretically useful field that cannot reliably be obtained before the expensive operation it is intended to avoid may have limited practical value.
 
 ---
 
-## 24. Should metadata be release-level or artifact-level?
+## 25. Should metadata be release-level or artifact-level?
 
-The research currently prefers **release-level semantics** for producer support.
+The research currently treats release-level semantics as the main hypothesis for producer support.
 
 A release can contain:
 
@@ -792,29 +867,39 @@ A release can contain:
 * multiple wheels;
 * wheels for different platforms;
 * wheels for different ABIs;
-* potentially different variants.
+* potentially multiple variants.
 
 Wheel tags already describe individual artifact compatibility.
 
-The proposed support declaration would instead describe the producer's
-support claim for the release as a whole.
+A support declaration would instead describe the producer's declared support for the release.
 
 However, this creates an important question:
 
-> Can one implementation-support declaration accurately describe all artifacts
-> and source-build paths belonging to a release?
+> Can one implementation-support declaration accurately describe all artifacts and source-build paths belonging to a release?
 
-If not, the model may need more nuanced semantics.
+A release may contain:
+
+```text
+generic pure-Python wheel
++
+CPython-specific native wheel
++
+sdist
+```
+
+Those artifacts can have materially different compatibility properties.
+
+If the release-level declaration cannot represent this without contradiction, the proposed abstraction may be wrong.
 
 ---
 
-## 25. Can implementation support be conditional?
+## 26. Can implementation support be conditional?
 
 A project may support an implementation only under particular conditions.
 
 For example:
 
-```text id="z5t9mc"
+```text
 CPython:
     supported
 
@@ -825,8 +910,7 @@ GraalPy:
     supported for pure-Python functionality only
 ```
 
-This raises the possibility that implementation support is not always a simple
-set.
+This raises the possibility that implementation support is not always a simple set.
 
 The research must determine whether conditional support belongs:
 
@@ -834,17 +918,16 @@ The research must determine whether conditional support belongs:
 * in dependency markers;
 * in artifact metadata;
 * in project documentation;
+* in another standardized mechanism;
 * or nowhere in normative installation metadata.
 
-A field that attempts to encode arbitrary compatibility logic could become
-unmanageably complex.
+A field that attempts to encode arbitrary compatibility logic could become unmanageably complex.
 
 ---
 
-## 26. Is implementation vocabulary open-ended?
+## 27. Is implementation vocabulary open-ended?
 
-PEP 421 deliberately uses an implementation identity rather than a closed
-registry.
+PEP 421 uses an implementation identity rather than requiring a closed registry.
 
 A standard should avoid creating a second incompatible registry if possible.
 
@@ -856,19 +939,24 @@ The unresolved questions include:
 * How are forks or derivatives represented?
 * Can a producer use an implementation family?
 * How should aliases be handled?
+* What happens when an implementation changes identity?
+* How should implementation versioning interact with Python versioning?
 
-The vocabulary must remain compatible with the open-ended nature of Python
-implementations.
+The vocabulary must remain compatible with the open-ended nature of Python implementations.
+
+The existence of implementation classifiers also raises another question:
+
+> Should any new metadata mechanism reuse the ecosystem's existing implementation identifiers rather than defining a new namespace?
 
 ---
 
-## 27. What would an installer actually do with the information?
+## 28. What would an installer actually do with the information?
 
 This question remains deliberately unresolved.
 
 Possible behavior includes:
 
-```text id="y7v3rc"
+```text
 supported
     → normal candidate
 
@@ -889,21 +977,23 @@ The correct behavior depends on the semantics of the field.
 
 A particularly important question is whether the resolver should distinguish:
 
-```text id="q2j6hf"
-producer says unsupported
+```text
+producer explicitly says unsupported
 ```
 
 from:
 
-```text id="h5k8wm"
+```text
 producer makes no declaration
 ```
 
 The research currently favors preserving that distinction.
 
+But even if that distinction is useful, it does not automatically imply that candidate rejection is appropriate.
+
 ---
 
-## 28. What would a non-installer consumer do?
+## 29. What would a non-installer consumer do?
 
 The metadata could potentially be useful to:
 
@@ -919,7 +1009,7 @@ But each consumer may need different semantics.
 
 For example:
 
-```text id="r5n2cx"
+```text
 testing tool:
     "not listed" → skip or mark unknown
 
@@ -930,12 +1020,56 @@ hard compatibility checker:
     "not listed" → insufficient evidence
 ```
 
-This is an argument against assuming that installer rejection is the only
-possible consumer.
+This is an argument against assuming that installer rejection is the only possible consumer.
+
+The unresolved question is:
+
+> Which consumer has the strongest concrete need, and can that need justify standardization independently of speculative future consumers?
 
 ---
 
-## 29. How common is the problem?
+## 30. Who is the actual consumer and what decision changes?
+
+This question deserves separate treatment because it is the core proof obligation.
+
+For every proposed use case, the research should identify:
+
+```text
+consumer
+    ↓
+information available today
+    ↓
+decision made today
+    ↓
+failure/cost of that decision
+    ↓
+new information
+    ↓
+different decision
+    ↓
+measurable benefit
+```
+
+For example, a claim such as:
+
+```text
+"pip should avoid trying this package on PyPy"
+```
+
+is incomplete unless the research establishes:
+
+* why pip cannot know this today;
+* why existing metadata is insufficient;
+* whether the release would otherwise be selected;
+* what operation would be avoided;
+* how frequently this occurs;
+* whether the producer declaration would be trustworthy.
+
+The same discipline should apply to fuzzing, CI, package indexes, and ecosystem-analysis use cases.
+
+---
+
+## 31. How common is the problem?
 
 The current examples establish that the pattern exists.
 
@@ -943,7 +1077,7 @@ They do not establish ecosystem-wide prevalence.
 
 The research must not make claims such as:
 
-```text id="g3p7zm"
+```text
 "X% of PyPI packages have this problem"
 ```
 
@@ -952,15 +1086,20 @@ without a reproducible release-level corpus and explicit methodology.
 The important measurement questions are:
 
 * How many releases explicitly declare implementation restrictions?
+* How many contain implementation-specific runtime guards?
 * How many publish implementation-generic wheels?
 * How many also publish an sdist?
 * How many restrictions are runtime rather than build/ABI/dependency issues?
+* How many are explicit support policies rather than technical failures?
 * How many create an actual pre-install candidate-selection problem?
 * How many would be solved by existing mechanisms?
+* How many would materially benefit from a machine-readable declaration?
+
+The current research should therefore distinguish **examples proving existence** from **measurements proving prevalence**.
 
 ---
 
-## 30. What evidence would falsify the proposal?
+## 32. What evidence would falsify the proposal?
 
 The research should define failure conditions before recommending a PEP.
 
@@ -973,7 +1112,10 @@ The proposal becomes substantially weaker if investigation shows that:
 * implementation restrictions are too rare to justify ecosystem complexity;
 * producer declarations are too unreliable for machine actionability;
 * consumers do not need the information before installation;
-* or failed-build caching provides most of the practical benefit.
+* failed-build caching provides most of the practical benefit;
+* the information is too difficult to obtain early enough;
+* release-level semantics cannot accurately describe mixed artifact releases;
+* conditional implementation support makes the field impractically complex.
 
 A credible research process must allow the conclusion:
 
@@ -981,27 +1123,29 @@ A credible research process must allow the conclusion:
 
 ---
 
-# 31. Does the problem justify a new standard?
+## 33. Does the problem justify a new standard?
 
 This remains the central question.
 
 The current evidence supports the narrower observation:
 
-```text id="u4x8pq"
+```text
 Some releases have implementation-specific support boundaries
 that are not represented by their generic wheel tags or
 Requires-Python.
 ```
 
-The research has **not yet established**:
+The strongest examples make that observation credible.
 
-```text id="m6q1zt"
+The research has **not established**:
+
+```text
 therefore a new Core Metadata field is necessary.
 ```
 
 The remaining proof obligation is:
 
-```text id="c7w2pn"
+```text
 real release
     ↓
 explicit support boundary
@@ -1010,36 +1154,42 @@ root cause understood
     ↓
 existing mechanisms insufficient
     ↓
-meaningful pre-install consumer decision
+meaningful pre-install/build consumer decision
     ↓
 new machine-readable declaration provides material benefit
+    ↓
+declaration can be obtained early enough
+    ↓
+producer declarations are trustworthy enough
     ↓
 benefit justifies ecosystem cost
 ```
 
-Only if this chain survives adversarial investigation should a new normative
-metadata mechanism be recommended.
+Only if this chain survives adversarial investigation should a new normative metadata mechanism be recommended.
 
 ---
 
-# 32. Current design hypothesis
+# Current Design Hypotheses
 
-If the research ultimately establishes that a new mechanism is justified, the
-current leading hypothesis is a positive support declaration such as:
+The following are hypotheses under investigation, not conclusions.
 
-```toml id="e8p4qy"
+## A. Positive support declaration
+
+If the research ultimately establishes that a new mechanism is justified, the current leading semantic hypothesis is a positive support declaration such as:
+
+```toml
 supported-implementation = ["cpython", "pypy"]
 ```
 
-rather than a requirement-style field such as:
+rather than:
 
-```toml id="v3k7hs"
+```toml
 requires-implementation = ["cpython"]
 ```
 
 The reason is semantic:
 
-```text id="s9m2fd"
+```text
 Requires-Implementation
     sounds like
 hard installation requirement
@@ -1051,31 +1201,88 @@ producer-declared support boundary
 
 However:
 
-> `Supported-Implementation` is a research hypothesis, not the current
-> recommendation.
+> `Supported-Implementation` is a research hypothesis, not the current recommendation.
 
-The research must first establish that a normative release-level support
-declaration is needed at all.
+The research must first establish that a normative release-level support declaration is needed at all.
 
 ---
 
-# 33. Current research priority
+## B. Omission should not imply universal support
 
-The highest-priority unresolved questions are now:
+If a field were standardized, omission should not silently convert an existing distribution into either:
 
-1. **Root cause:** Why are the strongest real-world releases
-   implementation-specific?
-2. **Residuality:** Which cases survive PEP 725, ABI, artifact, dependency,
-   classifier, and alternative-interpreter explanations?
-3. **Consumer:** Who needs the information before installation/build?
+```text
+all implementations supported
+```
+
+or:
+
+```text
+all implementations unsupported
+```
+
+The leading hypothesis is:
+
+```text
+field absent
+    →
+no normative implementation-support declaration
+```
+
+This preserves backwards compatibility and distinguishes unknown information from an explicit negative declaration.
+
+This remains a hypothesis pending final semantic design.
+
+---
+
+## C. Support should not become a second wheel-tag system
+
+A future implementation-support mechanism should not attempt to reproduce:
+
+* Python version constraints;
+* ABI tags;
+* platform tags;
+* architecture tags;
+* free-threading distinctions;
+* debug-build distinctions;
+* arbitrary artifact variants.
+
+The unresolved design question is whether a narrow implementation identity dimension can be defined cleanly enough to coexist with those mechanisms.
+
+---
+
+# Highest-Priority Remaining Questions
+
+The research should now prioritize the questions that most directly determine whether the project should become a PEP.
+
+1. **Root cause:** Why are the strongest real-world releases implementation-specific?
+
+2. **Residuality:** Which cases survive PEP 725, ABI, artifact, dependency, classifier, and alternative-interpreter explanations?
+
+3. **Consumer:** Who needs the information before installation or source build?
+
 4. **Decision:** What concrete decision changes when the information is known?
-5. **Semantics:** Is the required concept support, requirement, or something
-   else?
-6. **Trust:** Can producer declarations be maintained accurately enough for
-   automation?
-7. **Prevalence:** Is the problem common enough to justify standardization?
-8. **Placement:** If justified, does the information belong in Core Metadata,
-   repository metadata, or another layer?
 
-Until these questions are answered, the project should remain in the research
-phase rather than prematurely becoming a PEP proposal.
+5. **Benefit:** What measurable cost or failure does that decision avoid?
+
+6. **Semantics:** Is the required concept support, requirement, compatibility, or something else?
+
+7. **Trust:** Can producer declarations be maintained accurately enough for automation?
+
+8. **Prevalence:** Is the problem common enough to justify standardization?
+
+9. **Acquisition:** Can the information reach the intended consumer before the expensive or failing operation?
+
+10. **Scope:** Is the declaration genuinely release-level, or does artifact-level metadata already provide the necessary semantics?
+
+11. **Alternatives:** Could classifiers, PEP 725, wheel tags, PEP 780, PEP 825, caching, or improved interpreter compatibility solve the problem more appropriately?
+
+12. **Placement:** If justified, does the information belong in Core Metadata, repository metadata, or another layer?
+
+13. **Adoption:** What concrete incentive would cause projects to maintain a new field accurately?
+
+14. **Failure mode:** What happens when a declaration is stale, incomplete, overly broad, or wrong?
+
+15. **No-new-standard outcome:** Can the research honestly conclude that existing mechanisms are sufficient?
+
+Until these questions are answered, the project should remain in the research phase rather than prematurely becoming a PEP proposal.
